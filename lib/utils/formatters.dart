@@ -1,16 +1,23 @@
-import 'package:flutter/material.dart';
-
 String currency(double amount) {
   final formatted = amount.toStringAsFixed(0);
-  final buffer = StringBuffer();
-  for (var i = 0; i < formatted.length; i++) {
-    final positionFromEnd = formatted.length - i;
-    buffer.write(formatted[i]);
-    if (positionFromEnd > 1 && positionFromEnd % 3 == 1) {
-      buffer.write(',');
-    }
+  if (formatted.length <= 3) {
+    return '₹$formatted';
   }
-  return '₹$buffer';
+
+  final lastThree = formatted.substring(formatted.length - 3);
+  var prefix = formatted.substring(0, formatted.length - 3);
+  final groups = <String>[];
+
+  while (prefix.length > 2) {
+    groups.insert(0, prefix.substring(prefix.length - 2));
+    prefix = prefix.substring(0, prefix.length - 2);
+  }
+
+  if (prefix.isNotEmpty) {
+    groups.insert(0, prefix);
+  }
+
+  return '₹${groups.join(',')},$lastThree';
 }
 
 String formatDate(DateTime date) {

@@ -1,58 +1,693 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../state/app_state.dart';
-import '../theme/app_colors.dart';
-import '../widgets/common.dart';
+
 import '../models/farmer.dart';
 import '../models/support.dart';
+import '../state/app_state.dart';
+import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
+import '../widgets/common.dart';
 
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final lastTransaction = appState.lastSupportTransaction;
     return PageScaffold(
       title: 'Support',
       description: 'Choose the type of support you want to provide.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ActionCard(
+          _ActionCard(
             icon: Icons.payments_outlined,
             iconBackground: AppColors.brandGreenLight,
             iconColor: AppColors.brandGreenDark,
             title: 'Cash Support',
             description:
-                'Disburse cash advances to farmers based on partnership terms and track OTP-based acknowledgments.',
-            onTap: () {
-              context.read<AppState>().startSupportFlow(SupportType.cash);
-              context.push('/support/flow/cash');
-            },
+                'Activate willing farmers through cash advance, code sharing, payment, and OTP acknowledgment.',
+            onTap: () => context.go('/support/flow/cash'),
           ),
           const SizedBox(height: 14),
-          ActionCard(
+          _ActionCard(
             icon: Icons.inventory_2_outlined,
             iconBackground: AppColors.brandBlueLight,
             iconColor: AppColors.brandBlue,
             title: 'Kind Support',
             description:
-                'Deliver in-kind support items like seeds, fertilizers, and services, then confirm with OTP verification.',
-            onTap: () {
-              context.read<AppState>().startSupportFlow(SupportType.kind);
-              context.push('/support/flow/kind');
-            },
+                'Record backend-fed kind items, quantity, value, and OTP acknowledgment for in-kind delivery.',
+            onTap: () => context.go('/support/flow/kind'),
           ),
           const SizedBox(height: 24),
-          Text('About Support', style: Theme.of(context).textTheme.titleLarge),
+          Text('Support Rules', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 10),
-          const BulletText(
-            'All disbursements require farmer acknowledgment via OTP.',
+          const _BulletText(
+            'A willing farmer becomes booked only after cash support reaches Acknowledged.',
           ),
           const SizedBox(height: 8),
-          const BulletText(
-            'Support amounts and items are based on partnership agreements.',
+          const _BulletText(
+            'Every support event must end with farmer OTP verification.',
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Post-Disbursement Summary',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InfoPair(
+                  label: 'Total Cash Disbursed',
+                  value: currency(appState.totalCashSupportValue),
+                ),
+                const SizedBox(height: 8),
+                InfoPair(
+                  label: 'Total Kind Value',
+                  value: currency(appState.totalKindSupportValue),
+                ),
+                const SizedBox(height: 8),
+                InfoPair(
+                  label: 'OTP Pending',
+                  value: '${appState.otpPendingSupport.length} records',
+                ),
+                if (lastTransaction != null) ...[
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  InfoPair(
+                    label: 'Last Transaction',
+                    value: '${lastTransaction.farmerName} • ${lastTransaction.statusLabel}',
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => context.go(
+                        '/engage/farmer/${lastTransaction.farmerId}?tab=profile',
+                      ),
+                      child: const Text('View farmer profile'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (appState.otpPendingSupport.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'OTP Follow-up',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            ...appState.otpPendingSupport.take(3).map(
+              (record) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: SectionCard(
+                  useInnerPadding: false,
+                  child: ListTile(
+                    title: Text(record.farmerName),
+                    subtitle: Text(
+                      '${record.type.label} • ${record.statusLabel}',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.go(
+                      '/support/flow/${record.type.name}?farmerId=${record.farmerId}&recordId=${record.id}',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class SupportFlowScreen extends StatefulWidget {
+  const SupportFlowScreen({
+    super.key,
+    required this.type,
+    this.farmerId,
+    this.recordId,
+  });
+
+  final SupportType type;
+  final String? farmerId;
+  final String? recordId;
+
+  @override
+  State<SupportFlowScreen> createState() => _SupportFlowScreenState();
+}
+
+class _SupportFlowScreenState extends State<SupportFlowScreen> {
+  final _searchController = TextEditingController();
+  final _landController = TextEditingController();
+  final _cropContextController = TextEditingController();
+  final _amountController = TextEditingController();
+  final _itemController = TextEditingController();
+  final _quantityController = TextEditingController();
+  final _unitController = TextEditingController();
+  final _valueController = TextEditingController();
+  final _otpController = TextEditingController();
+
+  String _searchQuery = '';
+  String? _lastSyncKey;
+
+  static const _kindItemOptions = [
+    'Seeds',
+    'Fertilizer',
+    'Pesticides',
+    'Saplings',
+    'Irrigation Service',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppState>().startSupportFlow(
+            widget.type,
+            farmerId: widget.farmerId,
+            recordId: widget.recordId,
+          );
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _landController.dispose();
+    _cropContextController.dispose();
+    _amountController.dispose();
+    _itemController.dispose();
+    _quantityController.dispose();
+    _unitController.dispose();
+    _valueController.dispose();
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  int get _totalSteps => widget.type == SupportType.cash ? 5 : 3;
+
+  void _syncControllers(SupportFlowDraft draft) {
+    final syncKey = '${draft.recordId}|${draft.farmerId}|${draft.stepIndex}';
+    if (_lastSyncKey == syncKey) {
+      return;
+    }
+    _lastSyncKey = syncKey;
+    _landController.text = draft.landDetails;
+    _cropContextController.text = draft.cropContext;
+    _amountController.text = draft.cashAmount.toStringAsFixed(0);
+    _itemController.text = draft.itemName;
+    _quantityController.text = draft.quantity.toStringAsFixed(0);
+    _unitController.text = draft.unit;
+    _valueController.text = draft.kindValue.toStringAsFixed(0);
+    _otpController.text = draft.otpInput;
+  }
+
+  String _stepDescription(int step) {
+    if (step == 0) {
+      return 'Select a farmer to continue.';
+    }
+    if (step == 1) {
+      return 'Capture support details before generating the confirmation code.';
+    }
+    if (widget.type == SupportType.cash) {
+      switch (step) {
+        case 2:
+          return 'Generate and share the confirmation code, then mark as received.';
+        case 3:
+          return 'Mark the cash advance as paid.';
+        case 4:
+          return 'Verify OTP to reach Acknowledged and book the farmer.';
+      }
+    }
+    return 'Verify OTP to complete the kind support delivery.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final draft = appState.supportDraft;
+    if (draft == null || draft.type != widget.type) {
+      return const SizedBox.shrink();
+    }
+    _syncControllers(draft);
+
+    final selectedFarmer =
+        draft.farmerId == null ? null : appState.farmerById(draft.farmerId!);
+    final activeRecord = appState.activeSupportRecord;
+    final farmers = appState.searchFarmers(_searchQuery);
+
+    return PageScaffold(
+      title: widget.type.label,
+      showBack: true,
+      description: _stepDescription(draft.stepIndex),
+      subtitle: 'STEP ${draft.stepIndex + 1} OF $_totalSteps',
+      onBack: () {
+        if (draft.stepIndex == 0) {
+          appState.cancelSupportFlow();
+          context.go('/support');
+          return;
+        }
+        appState.updateSupportDraft(draft.copyWith(stepIndex: draft.stepIndex - 1));
+      },
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton(
+            key: const Key('support_primary_button'),
+            style: filledButtonStyle(),
+            onPressed: () => _handlePrimaryAction(
+              context,
+              appState,
+              draft,
+              selectedFarmer,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(_primaryButtonLabel(draft.stepIndex)),
+            ),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SupportStageBar(record: activeRecord, type: widget.type),
+          const SizedBox(height: 18),
+          if (draft.stepIndex == 0) ...[
+            SearchField(
+              controller: _searchController,
+              hintText: 'Search farmer name, location...',
+              onChanged: (value) => setState(() {
+                _searchQuery = value;
+              }),
+            ),
+            const SizedBox(height: 18),
+            Text('All Farmers', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 14),
+            ...farmers.map(
+              (farmer) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _SupportFarmerCard(
+                  farmer: farmer,
+                  selected: farmer.id == draft.farmerId,
+                  onTap: () => appState.updateSupportDraft(
+                    draft.copyWith(
+                      farmerId: farmer.id,
+                      landDetails: farmer.landDetails,
+                      cropContext: '${farmer.crop} / ${farmer.season}',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ] else if (draft.stepIndex == 1 && selectedFarmer != null) ...[
+            Text('Farmer Details', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            FarmerDetailSummary(farmer: selectedFarmer),
+            const SizedBox(height: 18),
+            Text(
+              'Disbursement Details',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _landController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Land Details'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _cropContextController,
+                    decoration:
+                        const InputDecoration(labelText: 'Crop / Season Context'),
+                  ),
+                  const SizedBox(height: 12),
+                  DatePickerField(
+                    label: 'Disbursement Date',
+                    initialDate: draft.disbursementDate,
+                    onDateSelected: (date) => appState.updateSupportDraft(
+                      draft.copyWith(disbursementDate: date),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (widget.type == SupportType.cash) ...[
+                    TextField(
+                      controller: _amountController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Cash Amount (₹)',
+                      ),
+                    ),
+                  ] else ...[
+                    DropdownButtonFormField<String>(
+                      initialValue:
+                          _kindItemOptions.contains(_itemController.text)
+                              ? _itemController.text
+                              : _kindItemOptions.first,
+                      items: _kindItemOptions
+                          .map(
+                            (item) => DropdownMenuItem<String>(
+                              value: item,
+                              child: Text(item),
+                            ),
+                          )
+                          .toList(),
+                      decoration: const InputDecoration(labelText: 'Kind Item'),
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+                        _itemController.text = value;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _quantityController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Quantity',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _unitController,
+                            decoration:
+                                const InputDecoration(labelText: 'Unit'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _valueController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Price / Value (₹)',
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ] else if (selectedFarmer != null && activeRecord != null) ...[
+            Text('Farmer Details', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            FarmerDetailSummary(farmer: selectedFarmer),
+            const SizedBox(height: 18),
+            _SupportSummaryCard(record: activeRecord),
+            const SizedBox(height: 16),
+            if (draft.stepIndex == 2 && widget.type == SupportType.cash) ...[
+              SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Confirmation Code',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    InfoPair(
+                      label: 'Generated Code',
+                      value: activeRecord.confirmationCode ?? '-',
+                    ),
+                    const SizedBox(height: 8),
+                    InfoPair(label: 'Status', value: activeRecord.statusLabel),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final success = await appState.shareSupportCode();
+                            if (context.mounted) {
+                              showMockSnackBar(
+                                context,
+                                success
+                                    ? 'Confirmation code shared.'
+                                    : 'Unable to share confirmation code.',
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.share_outlined),
+                          label: const Text('Share Code'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final success = await appState.messageFarmer(
+                              selectedFarmer.id,
+                              body:
+                                  'Your eK Acre confirmation code is ${activeRecord.confirmationCode}.',
+                            );
+                            if (context.mounted) {
+                              showMockSnackBar(
+                                context,
+                                success
+                                    ? 'Message app opened.'
+                                    : 'Unable to open messaging app.',
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.sms_outlined),
+                          label: const Text('Send via SMS'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (draft.stepIndex == 3 && widget.type == SupportType.cash)
+              SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Payment Confirmation',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Use this step once the cash advance has actually been disbursed to the farmer.',
+                    ),
+                  ],
+                ),
+              ),
+            if ((draft.stepIndex == 4 && widget.type == SupportType.cash) ||
+                (draft.stepIndex == 2 && widget.type == SupportType.kind))
+              SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'OTP Verification',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    InfoPair(
+                      label: 'Confirmation Code',
+                      value: activeRecord.confirmationCode ?? '-',
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _otpController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Enter 4-digit OTP',
+                      ),
+                      onChanged: (value) => appState.updateSupportDraft(
+                        draft.copyWith(otpInput: value),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _primaryButtonLabel(int step) {
+    if (step == 0) {
+      return 'Select Farmer';
+    }
+    if (step == 1) {
+      return 'Generate Confirmation Code';
+    }
+    if (widget.type == SupportType.cash) {
+      switch (step) {
+        case 2:
+          return 'Mark Received';
+        case 3:
+          return 'Mark Paid';
+        case 4:
+          return 'Verify OTP';
+      }
+    }
+    return 'Verify OTP';
+  }
+
+  void _handlePrimaryAction(
+    BuildContext context,
+    AppState appState,
+    SupportFlowDraft draft,
+    FarmerProfile? selectedFarmer,
+  ) {
+    if (draft.stepIndex == 0) {
+      if (draft.farmerId == null) {
+        showMockSnackBar(context, 'Select a farmer to continue.');
+        return;
+      }
+      appState.updateSupportDraft(draft.copyWith(stepIndex: 1));
+      return;
+    }
+
+    if (draft.stepIndex == 1) {
+      final updated = draft.copyWith(
+        landDetails: _landController.text.trim(),
+        cropContext: _cropContextController.text.trim(),
+        cashAmount:
+            double.tryParse(_amountController.text.trim()) ?? draft.cashAmount,
+        itemName: _itemController.text.trim().isEmpty
+            ? draft.itemName
+            : _itemController.text.trim(),
+        quantity:
+            double.tryParse(_quantityController.text.trim()) ?? draft.quantity,
+        unit: _unitController.text.trim().isEmpty
+            ? draft.unit
+            : _unitController.text.trim(),
+        kindValue:
+            double.tryParse(_valueController.text.trim()) ?? draft.kindValue,
+      );
+      appState.updateSupportDraft(updated);
+      final success = appState.saveSupportDetails();
+      if (!success) {
+        showMockSnackBar(context, 'Complete the support details first.');
+      }
+      return;
+    }
+
+    if (widget.type == SupportType.cash && draft.stepIndex == 2) {
+      final success = appState.markCashSupportReceived();
+      if (!success) {
+        showMockSnackBar(context, 'Unable to move to Received.');
+      }
+      return;
+    }
+
+    if (widget.type == SupportType.cash && draft.stepIndex == 3) {
+      final success = appState.markCashSupportPaid();
+      if (!success) {
+        showMockSnackBar(context, 'Unable to mark cash as paid.');
+      }
+      return;
+    }
+
+    appState.updateSupportDraft(draft.copyWith(otpInput: _otpController.text.trim()));
+    final success = appState.confirmSupportOtp();
+    if (!success) {
+      showMockSnackBar(context, 'OTP did not match the generated code.');
+      return;
+    }
+    if (selectedFarmer != null) {
+      context.go('/support/success?farmerId=${selectedFarmer.id}');
+    } else {
+      context.go('/support/success');
+    }
+  }
+}
+
+class SupportSuccessScreen extends StatelessWidget {
+  const SupportSuccessScreen({super.key, this.farmerId});
+
+  final String? farmerId;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final transaction = appState.lastSupportTransaction;
+    final targetFarmerId = farmerId ?? transaction?.farmerId;
+    final title = transaction?.type == SupportType.kind
+        ? 'Kind Support Completed'
+        : 'Cash Disbursement Completed';
+
+    return PageScaffold(
+      title: transaction?.type.label ?? 'Support',
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          const Icon(
+            Icons.check_circle_outline,
+            size: 90,
+            color: AppColors.brandGreen,
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.headlineMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          if (transaction != null)
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  InfoPair(label: 'Farmer', value: transaction.farmerName),
+                  const SizedBox(height: 8),
+                  InfoPair(label: 'Status', value: transaction.statusLabel),
+                  const SizedBox(height: 8),
+                  if (transaction.type == SupportType.cash)
+                    InfoPair(
+                      label: 'Cash Amount',
+                      value: currency(transaction.cashAmount ?? 0),
+                    )
+                  else
+                    InfoPair(
+                      label: 'Kind Value',
+                      value: currency(transaction.kindValue ?? 0),
+                    ),
+                  const SizedBox(height: 8),
+                  InfoPair(
+                    label: 'Date',
+                    value: formatDate(transaction.disbursementDate),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 20),
+          if (targetFarmerId != null)
+            FilledButton(
+              style: filledButtonStyle(),
+              onPressed: () => context.go('/engage/farmer/$targetFarmerId?tab=profile'),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Text('View Farmer Profile'),
+              ),
+            ),
+          const SizedBox(height: 10),
+          TextButton(
+            onPressed: () => context.go('/support'),
+            child: const Text('Return To Support'),
           ),
         ],
       ),
@@ -60,9 +695,8 @@ class SupportScreen extends StatelessWidget {
   }
 }
 
-class ActionCard extends StatelessWidget {
-  const ActionCard({
-    super.key,
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({
     required this.icon,
     required this.iconBackground,
     required this.iconColor,
@@ -119,8 +753,8 @@ class ActionCard extends StatelessWidget {
   }
 }
 
-class BulletText extends StatelessWidget {
-  const BulletText(this.text, {super.key});
+class _BulletText extends StatelessWidget {
+  const _BulletText(this.text);
 
   final String text;
 
@@ -138,376 +772,16 @@ class BulletText extends StatelessWidget {
   }
 }
 
-class SupportFlowScreen extends StatefulWidget {
-  const SupportFlowScreen({super.key, required this.type});
-
-  final SupportType type;
-
-  @override
-  State<SupportFlowScreen> createState() => _SupportFlowScreenState();
-}
-
-class _SupportFlowScreenState extends State<SupportFlowScreen> {
-  final _searchController = TextEditingController();
-  final _amountController = TextEditingController();
-  final _purposeController = TextEditingController();
-  final _itemController = TextEditingController();
-  String _searchQuery = '';
-
-  static const _kindItemOptions = ['Seeds', 'Fertilizer', 'Pesticides'];
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final appState = context.read<AppState>();
-      final draft = appState.supportDraft;
-      if (draft == null || draft.type != widget.type) {
-        appState.startSupportFlow(widget.type);
-      }
-      _syncControllers();
-    });
-  }
-
-  void _syncControllers() {
-    final draft = context.read<AppState>().supportDraft;
-    if (draft == null) {
-      return;
-    }
-    _amountController.text = draft.cashAmount.toStringAsFixed(0);
-    _purposeController.text = draft.purpose;
-    _itemController.text = draft.itemName;
-  }
-
-  String _descriptionForStep(int stepIndex) {
-    if (stepIndex == 0) {
-      return 'Select farmer from the list below';
-    }
-    if (stepIndex == 1) {
-      return 'Check farmer information and enter disbursement details';
-    }
-    return 'Review disbursement summary and confirm transaction';
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _amountController.dispose();
-    _purposeController.dispose();
-    _itemController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
-    final draft = appState.supportDraft;
-    if (draft == null || draft.type != widget.type) {
-      return const SizedBox.shrink();
-    }
-
-    final selectedFarmer = draft.farmerId != null
-        ? appState.farmerById(draft.farmerId!)
-        : null;
-    final farmers = appState.searchFarmers(_searchQuery);
-    final stepIndex = draft.stepIndex;
-
-    return PageScaffold(
-      title: widget.type.label,
-      showBack: true,
-      description: _descriptionForStep(stepIndex),
-      subtitle: 'STEP ${stepIndex + 1} OF 3',
-      onBack: () {
-        if (stepIndex == 0) {
-          appState.cancelSupportFlow();
-          context.pop();
-          return;
-        }
-        appState.updateSupportDraft(draft.copyWith(stepIndex: stepIndex - 1));
-      },
-      footer: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          FilledButton(
-            key: const Key('support_primary_button'),
-            style: filledButtonStyle(),
-            onPressed: () {
-              if (stepIndex == 0) {
-                if (draft.farmerId == null) {
-                  showMockSnackBar(context, 'Select a farmer to continue.');
-                  return;
-                }
-                appState.updateSupportDraft(draft.copyWith(stepIndex: 1));
-                _syncControllers();
-                return;
-              }
-
-              if (stepIndex == 1) {
-                final amount =
-                    double.tryParse(_amountController.text.trim()) ??
-                        draft.cashAmount;
-                final updatedDraft = draft.copyWith(
-                  cashAmount: amount,
-                  purpose: _purposeController.text.trim().isEmpty
-                      ? draft.purpose
-                      : _purposeController.text.trim(),
-                  itemName: _itemController.text.trim().isEmpty
-                      ? draft.itemName
-                      : _itemController.text.trim(),
-                  stepIndex: 2,
-                );
-                appState.updateSupportDraft(updatedDraft);
-                return;
-              }
-
-              final success = appState.confirmSupportFlow();
-              if (success) {
-                context.go('/support/success');
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                stepIndex == 2
-                    ? (widget.type == SupportType.cash
-                        ? 'Confirm Transfer'
-                        : 'Confirm Disbursement')
-                    : stepIndex == 0
-                        ? 'Start Disbursement'
-                        : 'Continue',
-              ),
-            ),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (stepIndex == 0) ...[
-            SearchField(
-              controller: _searchController,
-              hintText: 'Search farmer name, location, stage...',
-              onChanged: (value) => setState(() {
-                _searchQuery = value;
-              }),
-            ),
-            const SizedBox(height: 18),
-            Text('All Farmers', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 14),
-            ...farmers.map(
-              (farmer) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: FarmerListCard(
-                  farmer: farmer,
-                  selected: farmer.id == draft.farmerId,
-                  onTap: () => appState.updateSupportDraft(
-                    draft.copyWith(farmerId: farmer.id),
-                  ),
-                ),
-              ),
-            ),
-          ] else if (stepIndex == 1 && selectedFarmer != null) ...[
-            Text(
-              'Farmer Details',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            FarmerDetailSummary(farmer: selectedFarmer),
-            const SizedBox(height: 18),
-            Text(
-              'Disbursement Details',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.type == SupportType.cash) ...[
-                    TextField(
-                      controller: _amountController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Cash Amount (₹)',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DatePickerField(
-                      label: 'Date',
-                      initialDate: draft.date,
-                      onDateSelected: (date) => appState.updateSupportDraft(
-                        draft.copyWith(date: date),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _purposeController,
-                      decoration: const InputDecoration(labelText: 'Purpose'),
-                    ),
-                  ] else ...[
-                    DropdownButtonFormField<String>(
-                      value: _kindItemOptions.contains(_itemController.text)
-                          ? _itemController.text
-                          : _kindItemOptions.first,
-                      items: _kindItemOptions
-                          .map(
-                            (item) => DropdownMenuItem<String>(
-                              value: item,
-                              child: Text(item),
-                            ),
-                          )
-                          .toList(),
-                      decoration: const InputDecoration(labelText: 'Kind Item'),
-                      onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
-                        setState(() {
-                          _itemController.text = value;
-                        });
-                      },
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ] else if (stepIndex == 2 && selectedFarmer != null) ...[
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Summary',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  InfoPair(label: 'Farmer', value: selectedFarmer.name),
-                  const SizedBox(height: 10),
-                  InfoPair(label: 'Address', value: selectedFarmer.location),
-                  const SizedBox(height: 10),
-                  if (widget.type == SupportType.cash)
-                    InfoPair(
-                      label: 'Amount',
-                      value: currency(
-                        double.tryParse(_amountController.text) ??
-                            draft.cashAmount,
-                      ),
-                    )
-                  else
-                    InfoPair(
-                      label: 'Item',
-                      value: _itemController.text.trim().isEmpty
-                          ? draft.itemName
-                          : _itemController.text.trim(),
-                    ),
-                  const SizedBox(height: 10),
-                  InfoPair(
-                    label: 'Purpose',
-                    value: _purposeController.text.trim().isEmpty
-                        ? draft.purpose
-                        : _purposeController.text.trim(),
-                  ),
-                  const SizedBox(height: 10),
-                  InfoPair(label: 'Date', value: formatDate(draft.date)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (widget.type == SupportType.cash)
-              SectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Transfer Details',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 18,
-                      ),
-                    ),
-                    SizedBox(height: 14),
-                    InfoPair(
-                      label: 'Transfer Method',
-                      value: 'Bank Transfer',
-                    ),
-                    SizedBox(height: 10),
-                    InfoPair(label: 'Account Holder Name', value: 'Amit Kumar'),
-                    SizedBox(height: 10),
-                    InfoPair(label: 'Bank Name', value: 'Lorem Ipsum'),
-                    SizedBox(height: 10),
-                    InfoPair(label: 'Account Number', value: 'xxxxxxxxx879'),
-                    SizedBox(height: 10),
-                    InfoPair(label: 'Branch Code', value: '-'),
-                    SizedBox(height: 10),
-                    InfoPair(label: 'Reference No.', value: '11234567890'),
-                  ],
-                ),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class SupportSuccessScreen extends StatelessWidget {
-  const SupportSuccessScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final transaction = context.watch<AppState>().lastSupportTransaction;
-    final title = transaction?.type == SupportType.kind
-        ? 'Kind Support Completed!'
-        : 'Cash Disbursement Completed!';
-
-    return PageScaffold(
-      title: transaction?.type.label ?? 'Support',
-      child: Column(
-        children: [
-          const SizedBox(height: 80),
-          const Icon(
-            Icons.check_circle_outline,
-            size: 90,
-            color: AppColors.brandGreen,
-          ),
-          const SizedBox(height: 20),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'You can view the updated support status later in farmer profile history.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 30),
-          FilledButton(
-            style: filledButtonStyle(),
-            onPressed: () => context.go('/support'),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              child: Text('Return To Support'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class FarmerListCard extends StatelessWidget {
-  const FarmerListCard({
-    super.key,
+class _SupportFarmerCard extends StatelessWidget {
+  const _SupportFarmerCard({
     required this.farmer,
-    this.onTap,
-    this.selected = false,
+    required this.selected,
+    required this.onTap,
   });
 
   final FarmerProfile farmer;
-  final VoidCallback? onTap;
   final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -528,9 +802,15 @@ class FarmerListCard extends StatelessWidget {
                   ),
                 ),
                 StatusPill(
-                  label: farmer.status.label,
-                  background: farmer.status.backgroundColor,
-                  foreground: farmer.status.foregroundColor,
+                  label: farmer.status == FarmerStatus.willing
+                      ? farmer.status.label
+                      : farmer.stage.label,
+                  background: farmer.status == FarmerStatus.willing
+                      ? farmer.status.backgroundColor
+                      : stageBackgroundColor(farmer.stage),
+                  foreground: farmer.status == FarmerStatus.willing
+                      ? farmer.status.foregroundColor
+                      : stageForegroundColor(farmer.stage),
                 ),
               ],
             ),
@@ -541,10 +821,87 @@ class FarmerListCard extends StatelessWidget {
             const SizedBox(height: 8),
             InfoPair(
               label: 'Land Area',
-              value: '${farmer.totalLandAcres.toStringAsFixed(0)} acres',
+              value: '${farmer.totalLandAcres.toStringAsFixed(1)} acres',
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SupportStageBar extends StatelessWidget {
+  const _SupportStageBar({required this.record, required this.type});
+
+  final SupportRecord? record;
+  final SupportType type;
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = type == SupportType.cash
+        ? CashSupportStage.values.map((item) => item.label).toList()
+        : KindSupportStage.values.map((item) => item.label).toList();
+
+    final currentLabel = record?.statusLabel;
+    final currentIndex = currentLabel == null ? -1 : labels.indexOf(currentLabel);
+
+    return Row(
+      children: List.generate(labels.length, (index) {
+        final isActive = index <= currentIndex;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: StatusPill(
+              label: labels[index],
+              background:
+                  isActive ? AppColors.brandGreenLight : AppColors.surfaceMuted,
+              foreground:
+                  isActive ? AppColors.brandGreenDark : AppColors.textSecondary,
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _SupportSummaryCard extends StatelessWidget {
+  const _SupportSummaryCard({required this.record});
+
+  final SupportRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Summary', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          InfoPair(label: 'Farmer', value: record.farmerName),
+          const SizedBox(height: 8),
+          InfoPair(label: 'Context', value: record.cropContext),
+          const SizedBox(height: 8),
+          InfoPair(
+            label: record.type == SupportType.cash ? 'Amount' : 'Item',
+            value: record.type == SupportType.cash
+                ? currency(record.cashAmount ?? 0)
+                : '${record.itemName} • ${record.quantity?.toStringAsFixed(0)} ${record.unit}',
+          ),
+          const SizedBox(height: 8),
+          if (record.type == SupportType.kind)
+            InfoPair(
+              label: 'Value',
+              value: currency(record.kindValue ?? 0),
+            ),
+          if (record.type == SupportType.kind) const SizedBox(height: 8),
+          InfoPair(label: 'Status', value: record.statusLabel),
+          const SizedBox(height: 8),
+          InfoPair(
+            label: 'Date',
+            value: formatDate(record.disbursementDate),
+          ),
+        ],
       ),
     );
   }

@@ -157,7 +157,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         children: [
                           Row(
                             children: List.generate(4, (index) {
-                              final digit = index < value.length ? value[index] : '0';
+                              final digit =
+                                  index < value.length ? value[index] : '0';
                               return Expanded(
                                 child: Container(
                                   height: 74,
@@ -224,8 +225,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           context.go('/home');
                         } else {
                           setState(() {
-                            _error =
-                                'Enter any valid 4 digit OTP to continue.';
+                            _error = 'Enter any valid 4 digit OTP to continue.';
                           });
                         }
                       },

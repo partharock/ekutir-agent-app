@@ -1,15 +1,11 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'theme/app_colors.dart';
-import 'models/farmer.dart';
-import 'models/support.dart';
 import 'models/procurement.dart';
+import 'models/support.dart';
 import 'state/app_state.dart';
-import 'widgets/auth_widgets.dart';
-import 'widgets/common.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth_screens.dart';
 import 'screens/home_screen.dart';
@@ -40,14 +36,12 @@ void main() {
 
 void _applyDebugSeed(AppState appState) {
   if (_debugSupportFlow.isNotEmpty) {
-    final type = _debugSupportFlow == 'kind'
-        ? SupportType.kind
-        : SupportType.cash;
-    appState.startSupportFlow(type);
+    final type =
+        _debugSupportFlow == 'kind' ? SupportType.kind : SupportType.cash;
+    appState.startSupportFlow(type, farmerId: appState.topPriorityFarmer.id);
     if (appState.supportDraft != null) {
       appState.updateSupportDraft(
         appState.supportDraft!.copyWith(
-          farmerId: appState.featuredFarmer.id,
           stepIndex: _debugSupportStep < 0 ? 0 : _debugSupportStep,
         ),
       );
@@ -55,12 +49,10 @@ void _applyDebugSeed(AppState appState) {
   }
 
   if (_debugProcurementStep >= 0) {
-    appState.startProcurement(appState.featuredFarmer.id);
-    if (appState.procurementDraft != null) {
-      appState.updateProcurementDraft(
-        appState.procurementDraft!.copyWith(stepIndex: _debugProcurementStep),
-      );
-    }
+    appState.startProcurementFlow(
+      appState.topPriorityFarmer.id,
+      step: ProcurementStep.values[_debugProcurementStep],
+    );
   }
 }
 
@@ -148,7 +140,15 @@ GoRouter _createRouter(AppState appState) {
           ),
           GoRoute(
             path: '/engage',
-            builder: (context, state) => const EngagementScreen(),
+            builder: (context, state) {
+              final tabParam = state.uri.queryParameters['tab'];
+              final tab = switch (tabParam) {
+                'booked' => FarmerDirectoryTab.booked,
+                'all' => FarmerDirectoryTab.all,
+                _ => FarmerDirectoryTab.willing,
+              };
+              return EngagementScreen(initialTab: tab);
+            },
           ),
           GoRoute(
             path: '/engage/farmer/:farmerId',
@@ -171,12 +171,18 @@ GoRouter _createRouter(AppState appState) {
                 (value) => value.name == typeName,
                 orElse: () => SupportType.cash,
               );
-              return SupportFlowScreen(type: type);
+              return SupportFlowScreen(
+                type: type,
+                farmerId: state.uri.queryParameters['farmerId'],
+                recordId: state.uri.queryParameters['recordId'],
+              );
             },
           ),
           GoRoute(
             path: '/support/success',
-            builder: (context, state) => const SupportSuccessScreen(),
+            builder: (context, state) => SupportSuccessScreen(
+              farmerId: state.uri.queryParameters['farmerId'],
+            ),
           ),
           GoRoute(
             path: '/harvest',
@@ -184,19 +190,30 @@ GoRouter _createRouter(AppState appState) {
           ),
           GoRoute(
             path: '/harvest/procurement',
-            builder: (context, state) => const ProcurementFlowScreen(),
+            builder: (context, state) => ProcurementFlowScreen(
+              farmerId: state.uri.queryParameters['farmerId'],
+              recordId: state.uri.queryParameters['recordId'],
+              initialStep: state.uri.queryParameters['step'],
+            ),
           ),
           GoRoute(
             path: '/harvest/success',
-            builder: (context, state) => const ProcurementSuccessScreen(),
+            builder: (context, state) => ProcurementSuccessScreen(
+              recordId: state.uri.queryParameters['recordId'],
+            ),
           ),
           GoRoute(
             path: '/crop-plan',
-            builder: (context, state) => const CropPlanScreen(),
+            builder: (context, state) => CropPlanScreen(
+              farmerId: state.uri.queryParameters['farmerId'],
+            ),
           ),
           GoRoute(
             path: '/misa-ai',
-            builder: (context, state) => const MisaAiPlaceholderScreen(),
+            builder: (context, state) => MisaAiScreen(
+              initialMode: state.uri.queryParameters['mode'],
+              farmerId: state.uri.queryParameters['farmerId'],
+            ),
           ),
         ],
       ),
@@ -219,7 +236,7 @@ ThemeData buildAppTheme() {
   return base.copyWith(
     textTheme: base.textTheme.copyWith(
       headlineMedium: base.textTheme.headlineMedium?.copyWith(
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w800,
         color: AppColors.textPrimary,
       ),
       titleLarge: base.textTheme.titleLarge?.copyWith(
@@ -276,6 +293,23 @@ ThemeData buildAppTheme() {
       ),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: Colors.white,
+      indicatorColor: AppColors.heroMist,
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return base.textTheme.bodySmall?.copyWith(
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: selected ? AppColors.heroForest : AppColors.textSecondary,
+        );
+      }),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return IconThemeData(
+          color: selected ? AppColors.heroForest : AppColors.textSecondary,
+        );
+      }),
     ),
   );
 }
@@ -335,8 +369,6 @@ class AppShell extends StatelessWidget {
               break;
           }
         },
-        backgroundColor: Colors.white,
-        indicatorColor: AppColors.brandGreenLight,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),

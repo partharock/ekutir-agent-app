@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_colors.dart';
-import 'support.dart';
-import 'procurement.dart';
-import 'crop_plan.dart';
 
 enum FarmerStatus { willing, booked }
 
@@ -10,11 +8,10 @@ enum FarmerStage {
   willing,
   booked,
   nursery,
-  transplanted,
   growth,
   harvest,
   procurement,
-  completed,
+  settlementCompleted,
 }
 
 extension FarmerStatusX on FarmerStatus {
@@ -55,74 +52,76 @@ extension FarmerStageX on FarmerStage {
         return 'Booked';
       case FarmerStage.nursery:
         return 'Nursery';
-      case FarmerStage.transplanted:
-        return 'Transplanted';
       case FarmerStage.growth:
         return 'Growth';
       case FarmerStage.harvest:
         return 'Harvest';
       case FarmerStage.procurement:
         return 'Procurement';
-      case FarmerStage.completed:
-        return 'Completed';
+      case FarmerStage.settlementCompleted:
+        return 'Settlement Completed';
     }
   }
 }
 
 Color stageBackgroundColor(FarmerStage stage) {
   switch (stage) {
-    case FarmerStage.booked:
-      return AppColors.brandBlueLight;
     case FarmerStage.willing:
       return AppColors.brandGreenLight;
+    case FarmerStage.booked:
+      return AppColors.brandBlueLight;
     case FarmerStage.nursery:
-    case FarmerStage.transplanted:
+      return AppColors.heroMist;
     case FarmerStage.growth:
+      return const Color(0xFFEFF7E3);
     case FarmerStage.harvest:
+      return const Color(0xFFFFF1D9);
     case FarmerStage.procurement:
-    case FarmerStage.completed:
-      return AppColors.pageBackground;
+      return const Color(0xFFEAE7FF);
+    case FarmerStage.settlementCompleted:
+      return const Color(0xFFE5F5EC);
   }
 }
 
 Color stageForegroundColor(FarmerStage stage) {
   switch (stage) {
-    case FarmerStage.booked:
-      return AppColors.brandBlue;
     case FarmerStage.willing:
       return AppColors.brandGreenDark;
+    case FarmerStage.booked:
+      return AppColors.brandBlue;
     case FarmerStage.nursery:
-    case FarmerStage.transplanted:
     case FarmerStage.growth:
+      return AppColors.heroForest;
     case FarmerStage.harvest:
+      return const Color(0xFF9C5C00);
     case FarmerStage.procurement:
-    case FarmerStage.completed:
-      return AppColors.textSecondary;
+      return const Color(0xFF5443B6);
+    case FarmerStage.settlementCompleted:
+      return const Color(0xFF157347);
   }
 }
 
 String stageHelperText(FarmerStage stage) {
   switch (stage) {
     case FarmerStage.willing:
-      return 'Booked status is activated after cash advance disbursal and OTP acknowledgment.';
+      return 'Proceed to cash support to activate the partnership.';
     case FarmerStage.booked:
-      return 'Booked status is activated after cash advance disbursal and OTP acknowledgment.';
+      return 'Cash support has been acknowledged. Nursery preparation is next.';
     case FarmerStage.nursery:
-      return 'Nursery preparation has started for this farmer.';
-    case FarmerStage.transplanted:
+      return 'Nursery activities are underway for this farmer.';
     case FarmerStage.growth:
-      return 'Transplanting completed and growth monitoring is underway.';
+      return 'Growth monitoring and planned visits are active.';
     case FarmerStage.harvest:
-      return 'Harvest window is active for the current crop cycle.';
+      return 'Harvest window is active. Procurement can be scheduled.';
     case FarmerStage.procurement:
-      return 'Procurement flow is active and receipt processing is in progress.';
-    case FarmerStage.completed:
-      return 'The current season cycle is completed.';
+      return 'Harvesting and procurement records are in progress or complete.';
+    case FarmerStage.settlementCompleted:
+      return 'Reconciliation is complete for this crop cycle.';
   }
 }
 
 class FarmerProfile {
-  FarmerProfile({
+  const FarmerProfile({
     required this.id,
     required this.name,
     required this.phone,
@@ -134,11 +133,8 @@ class FarmerProfile {
     required this.stage,
     required this.nurseryLandAcres,
     required this.mainLandAcres,
-    required this.cashEligibility,
-    required this.kindSupportItems,
-    required this.supportHistory,
-    required this.procurementHistory,
-    required this.activities,
+    required this.landDetails,
+    required this.supportPreview,
   });
 
   final String id;
@@ -148,13 +144,42 @@ class FarmerProfile {
   final double totalLandAcres;
   final String crop;
   final String season;
-  FarmerStatus status;
-  FarmerStage stage;
+  final FarmerStatus status;
+  final FarmerStage stage;
   final double nurseryLandAcres;
   final double mainLandAcres;
-  final double cashEligibility;
-  final Map<String, String> kindSupportItems;
-  final List<SupportTransaction> supportHistory;
-  final List<ProcurementReceipt> procurementHistory;
-  final List<CropPlanActivity> activities;
+  final String landDetails;
+  final Map<String, String> supportPreview;
+
+  FarmerProfile copyWith({
+    String? id,
+    String? name,
+    String? phone,
+    String? location,
+    double? totalLandAcres,
+    String? crop,
+    String? season,
+    FarmerStatus? status,
+    FarmerStage? stage,
+    double? nurseryLandAcres,
+    double? mainLandAcres,
+    String? landDetails,
+    Map<String, String>? supportPreview,
+  }) {
+    return FarmerProfile(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      location: location ?? this.location,
+      totalLandAcres: totalLandAcres ?? this.totalLandAcres,
+      crop: crop ?? this.crop,
+      season: season ?? this.season,
+      status: status ?? this.status,
+      stage: stage ?? this.stage,
+      nurseryLandAcres: nurseryLandAcres ?? this.nurseryLandAcres,
+      mainLandAcres: mainLandAcres ?? this.mainLandAcres,
+      landDetails: landDetails ?? this.landDetails,
+      supportPreview: supportPreview ?? this.supportPreview,
+    );
+  }
 }

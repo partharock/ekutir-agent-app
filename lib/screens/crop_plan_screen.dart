@@ -1,22 +1,223 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
+import '../models/crop_plan.dart';
+import '../models/farmer.dart';
 import '../state/app_state.dart';
 import '../theme/app_colors.dart';
-import '../widgets/common.dart';
-import '../models/farmer.dart';
-import '../models/crop_plan.dart';
 import '../utils/formatters.dart';
+import '../widgets/common.dart';
 
-class CropPlanScreen extends StatelessWidget {
-  const CropPlanScreen({super.key});
+enum _CropPlanFilter { all, nursery, growth, harvest, procurement }
+
+class CropPlanScreen extends StatefulWidget {
+  const CropPlanScreen({super.key, this.farmerId});
+
+  final String? farmerId;
+
+  @override
+  State<CropPlanScreen> createState() => _CropPlanScreenState();
+}
+
+class _CropPlanScreenState extends State<CropPlanScreen> {
+  String _query = '';
+  _CropPlanFilter _filter = _CropPlanFilter.all;
 
   @override
   Widget build(BuildContext context) {
-    final farmer = context.watch<AppState>().featuredFarmer;
+    final appState = context.watch<AppState>();
+
+    if (widget.farmerId != null) {
+      final farmer = appState.farmerById(widget.farmerId!);
+      return _FarmerCropPlanDetail(farmer: farmer);
+    }
+
+    final farmers = appState.priorityFarmers.where((farmer) {
+      final normalized = _query.trim().toLowerCase();
+      final matchesQuery = normalized.isEmpty ||
+          farmer.name.toLowerCase().contains(normalized) ||
+          farmer.location.toLowerCase().contains(normalized);
+      final matchesFilter = switch (_filter) {
+        _CropPlanFilter.all => true,
+        _CropPlanFilter.nursery =>
+          farmer.stage == FarmerStage.booked || farmer.stage == FarmerStage.nursery,
+        _CropPlanFilter.growth => farmer.stage == FarmerStage.growth,
+        _CropPlanFilter.harvest => farmer.stage == FarmerStage.harvest,
+        _CropPlanFilter.procurement =>
+          farmer.stage == FarmerStage.procurement ||
+              appState.procurementFor(farmer.id).isNotEmpty,
+      };
+      return matchesQuery && matchesFilter;
+    }).toList();
+
+    return PageScaffold(
+      title: 'Crop Plan',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SearchField(
+            hintText: 'Search farmer name, location...',
+            onChanged: (value) => setState(() {
+              _query = value;
+            }),
+          ),
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _StageTab(
+                  label: 'All',
+                  selected: _filter == _CropPlanFilter.all,
+                  onTap: () => setState(() {
+                    _filter = _CropPlanFilter.all;
+                  }),
+                ),
+                const SizedBox(width: 10),
+                _StageTab(
+                  label: 'Nursery',
+                  selected: _filter == _CropPlanFilter.nursery,
+                  onTap: () => setState(() {
+                    _filter = _CropPlanFilter.nursery;
+                  }),
+                ),
+                const SizedBox(width: 10),
+                _StageTab(
+                  label: 'Growth',
+                  selected: _filter == _CropPlanFilter.growth,
+                  onTap: () => setState(() {
+                    _filter = _CropPlanFilter.growth;
+                  }),
+                ),
+                const SizedBox(width: 10),
+                _StageTab(
+                  label: 'Harvest',
+                  selected: _filter == _CropPlanFilter.harvest,
+                  onTap: () => setState(() {
+                    _filter = _CropPlanFilter.harvest;
+                  }),
+                ),
+                const SizedBox(width: 10),
+                _StageTab(
+                  label: 'Procurement',
+                  selected: _filter == _CropPlanFilter.procurement,
+                  onTap: () => setState(() {
+                    _filter = _CropPlanFilter.procurement;
+                  }),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text('All Farmers', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 14),
+          if (farmers.isEmpty)
+            const EmptyStateCard(
+              message: 'No farmers match the current crop plan filter.',
+            )
+          else
+            ...farmers.map(
+              (farmer) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _CropPlanFarmerCard(farmer: farmer),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StageTab extends StatelessWidget {
+  const _StageTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
+      selectedColor: AppColors.heroMist,
+      side: BorderSide(
+        color: selected ? AppColors.brandGreen : AppColors.cardBorder,
+      ),
+      labelStyle: TextStyle(
+        color: selected ? AppColors.brandGreenDark : AppColors.textPrimary,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+class _CropPlanFarmerCard extends StatelessWidget {
+  const _CropPlanFarmerCard({required this.farmer});
+
+  final FarmerProfile farmer;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: InkWell(
+        onTap: () => context.go('/crop-plan?farmerId=${farmer.id}'),
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    farmer.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                StatusPill(
+                  label: farmer.stage.label,
+                  background: stageBackgroundColor(farmer.stage),
+                  foreground: stageForegroundColor(farmer.stage),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            InfoPair(label: 'Phone', value: farmer.phone),
+            const SizedBox(height: 8),
+            InfoPair(label: 'Location', value: farmer.location),
+            const SizedBox(height: 8),
+            InfoPair(
+              label: 'Land Area',
+              value: '${farmer.totalLandAcres.toStringAsFixed(1)} acres',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FarmerCropPlanDetail extends StatelessWidget {
+  const _FarmerCropPlanDetail({required this.farmer});
+
+  final FarmerProfile farmer;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final activities = appState.activitiesFor(farmer.id);
+    final harvestDates = appState.harvestDateOptionsFor(farmer.id);
 
     return PageScaffold(
       title: 'Farmer Crop Plan',
       showBack: true,
+      onBack: () => context.go('/crop-plan'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -47,57 +248,67 @@ class CropPlanScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           SectionCard(
-            backgroundColor: AppColors.brandBlueLight,
+            backgroundColor: AppColors.heroMist,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFD9E8FF),
-                        shape: BoxShape.circle,
+                Text(
+                  'Stage Promotion Rules',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.brandGreenDark,
                       ),
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: AppColors.brandBlue,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Stage Mapping',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 12),
-                const Text('Nursery  →  Nursery started / plants prepared'),
+                const Text('Nursery Start in progress or completed -> Nursery'),
                 const SizedBox(height: 6),
-                const Text('Growth  →  Transplanting completed'),
+                const Text('Transplanting completed -> Growth'),
                 const SizedBox(height: 6),
-                const Text('Harvest  →  Harvest window active'),
+                const Text('Harvest Window Start active -> Harvest'),
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
+          if (harvestDates.isNotEmpty)
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Harvest Date Options',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: harvestDates
+                        .map(
+                          (date) => StatusPill(
+                            label: formatDate(date),
+                            background: AppColors.brandBlueLight,
+                            foreground: AppColors.brandBlue,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
+          if (harvestDates.isNotEmpty) const SizedBox(height: 16),
           Text(
             'Planned Activities',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
-          ...farmer.activities.asMap().entries.map(
-                (entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: ActivityTimelineCard(
-                    activity: entry.value,
-                    showConnector: entry.key != farmer.activities.length - 1,
-                  ),
-                ),
+          ...activities.map(
+            (activity) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ActivityTimelineCard(
+                farmerId: farmer.id,
+                activity: activity,
               ),
+            ),
+          ),
         ],
       ),
     );
@@ -107,74 +318,20 @@ class CropPlanScreen extends StatelessWidget {
 class ActivityTimelineCard extends StatelessWidget {
   const ActivityTimelineCard({
     super.key,
+    required this.farmerId,
     required this.activity,
-    this.showConnector = true,
   });
 
-  final CropPlanActivity activity;
-  final bool showConnector;
-
-  @override
-  Widget build(BuildContext context) {
-    final isCompleted = activity.completed;
-    final color = isCompleted
-        ? AppColors.brandGreen
-        : activity.status == 'Planned'
-            ? AppColors.textSecondary
-            : AppColors.warning;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withValues(alpha: 0.12),
-                border: Border.all(color: color, width: 2),
-              ),
-              alignment: Alignment.center,
-              child: isCompleted
-                  ? const Icon(
-                      Icons.check,
-                      size: 14,
-                      color: AppColors.brandGreen,
-                    )
-                  : Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-            ),
-            if (showConnector)
-              Container(width: 2, height: 72, color: AppColors.cardBorder),
-          ],
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: ActivityCard(activity: activity)),
-      ],
-    );
-  }
-}
-
-class ActivityCard extends StatelessWidget {
-  const ActivityCard({super.key, required this.activity});
-
+  final String farmerId;
   final CropPlanActivity activity;
 
   @override
   Widget build(BuildContext context) {
-    final isCompleted = activity.completed;
-    final statusColor = isCompleted
-        ? AppColors.brandGreen
-        : activity.status == 'Planned'
-            ? AppColors.textSecondary
-            : AppColors.warning;
+    final color = switch (activity.status) {
+      CropActivityStatus.planned => AppColors.textSecondary,
+      CropActivityStatus.inProgress => AppColors.warning,
+      CropActivityStatus.completed => AppColors.brandGreen,
+    };
 
     return SectionCard(
       useInnerPadding: false,
@@ -184,27 +341,70 @@ class ActivityCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    activity.title,
-                    style: Theme.of(context).textTheme.titleMedium,
+                Container(
+                  width: 12,
+                  height: 12,
+                  margin: const EdgeInsets.only(top: 4),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
                   ),
                 ),
-                StatusPill(
-                  label: activity.status,
-                  background: statusColor.withValues(alpha: 0.12),
-                  foreground: statusColor,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              activity.title,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                          StatusPill(
+                            label: activity.status.label,
+                            background: color.withValues(alpha: 0.12),
+                            foreground: color,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Planned: ${formatDate(activity.plannedDate)}',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        activity.detail,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              'Planned: ${formatDate(activity.plannedDate)}',
-              style: Theme.of(context).textTheme.bodyMedium,
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: CropActivityStatus.values
+                  .map(
+                    (status) => ChoiceChip(
+                      label: Text(status.label),
+                      selected: activity.status == status,
+                      onSelected: (_) {
+                        context
+                            .read<AppState>()
+                            .updateCropActivityStatus(farmerId, activity.id, status);
+                      },
+                    ),
+                  )
+                  .toList(),
             ),
-            const SizedBox(height: 4),
-            Text(activity.detail, style: Theme.of(context).textTheme.bodyLarge),
           ],
         ),
       ),

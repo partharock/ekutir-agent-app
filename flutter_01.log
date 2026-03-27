@@ -1,0 +1,94 @@
+Flutter crash report.
+Please report a bug at https://github.com/flutter/flutter/issues.
+
+## command
+
+flutter assemble --no-version-check --output=/Users/parthaghosh/Library/Developer/Xcode/DerivedData/Runner-anugtadxdkfojcczezyaulqcbkwo/Build/Intermediates.noindex/ArchiveIntermediates/Runner/BuildProductsPath/Release-iphoneos/ -dTargetPlatform=ios -dTargetFile=lib/main.dart -dBuildMode=release -dConfiguration=Release -dIosArchs=arm64 -dSdkRoot=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk -dSplitDebugInfo= -dTreeShakeIcons=true -dTrackWidgetCreation=false -dDartObfuscation=false -dAction=install -dFrontendServerStarterPath= --ExtraGenSnapshotOptions= --DartDefines=RkxVVFRFUl9WRVJTSU9OPTMuNDEuNQ==,RkxVVFRFUl9DSEFOTkVMPXN0YWJsZQ==,RkxVVFRFUl9HSVRfVVJMPWh0dHBzOi8vZ2l0aHViLmNvbS9mbHV0dGVyL2ZsdXR0ZXIuZ2l0,RkxVVFRFUl9GUkFNRVdPUktfUkVWSVNJT049MmM5ZWIyMDczOQ==,RkxVVFRFUl9FTkdJTkVfUkVWSVNJT049MDUyZjMxZDExNQ==,RkxVVFRFUl9EQVJUX1ZFUlNJT049My4xMS4z --ExtraFrontEndOptions= -dSrcRoot=/Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/ios -dTargetDeviceOSVersion= -dCodesignIdentity=B9C76CC502B02016BB869C6E1BE036EF28CE1567 release_ios_bundle_flutter_assets
+
+## exception
+
+FileSystemException: FileSystemException: Failed to set file modification time, path = '/Users/parthaghosh/.dart-tool/dart-flutter-telemetry-session.json' (OS Error: No space left on device, errno = 28)
+
+```
+#0      _File.setLastModifiedSync (dart:io/file_impl.dart:553:7)
+#1      ForwardingFile.setLastModifiedSync (package:file/src/forwarding/forwarding_file.dart:64:55)
+#2      UserProperty.getSessionId (package:unified_analytics/src/user_property.dart:72:19)
+#3      UserProperty._toMap (package:unified_analytics/src/user_property.dart:147:23)
+#4      UserProperty.preparePayload (package:unified_analytics/src/user_property.dart:88:27)
+#5      generateRequestBody (package:unified_analytics/src/utils.dart:92:39)
+#6      AnalyticsImpl.send (package:unified_analytics/src/analytics.dart:612:18)
+#7      FlutterCommand.verifyThenRunCommand (package:flutter_tools/src/runner/flutter_command.dart:1935:17)
+<asynchronous suspension>
+#8      FlutterCommand.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command.dart:1590:27)
+<asynchronous suspension>
+#9      AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#10     CommandRunner.runCommand (package:args/command_runner.dart:212:13)
+<asynchronous suspension>
+#11     FlutterCommandRunner.runCommand.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:496:9)
+<asynchronous suspension>
+#12     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#13     FlutterCommandRunner.runCommand (package:flutter_tools/src/runner/flutter_command_runner.dart:431:5)
+<asynchronous suspension>
+#14     FlutterCommandRunner.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:307:33)
+<asynchronous suspension>
+#15     run.<anonymous closure>.<anonymous closure> (package:flutter_tools/runner.dart:104:11)
+<asynchronous suspension>
+#16     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+<asynchronous suspension>
+#17     main (package:flutter_tools/executable.dart:103:3)
+<asynchronous suspension>
+```
+
+## flutter doctor
+
+```
+[!] Flutter (Channel stable, 3.41.5, on macOS 26.3.1 25D2128 darwin-arm64, locale en-IN) [14.0s]
+    • Flutter version 3.41.5 on channel stable at /Users/parthaghosh/development/flutter
+    ! The flutter binary is not on your path. Consider adding /Users/parthaghosh/development/flutter/bin to your path.
+    ! The dart binary is not on your path. Consider adding /Users/parthaghosh/development/flutter/bin to your path.
+    • Upstream repository https://github.com/flutter/flutter.git
+    • Framework revision 2c9eb20739 (5 days ago), 2026-03-17 16:14:01 -0700
+    • Engine revision 052f31d115
+    • Dart version 3.11.3
+    • DevTools version 2.54.2
+    • Feature flags: enable-web, enable-linux-desktop, enable-macos-desktop, enable-windows-desktop, enable-android, enable-ios, cli-animations, enable-native-assets, omit-legacy-version-file, enable-lldb-debugging, enable-uiscene-migration
+    • If those were intentional, you can disregard the above warnings; however it is recommended to use "git" directly to perform update checks and upgrades.
+
+[✓] Android toolchain - develop for Android devices (Android SDK version 36.1.0-rc1) [24.0s]
+    • Android SDK at /Users/parthaghosh/Library/Android/sdk
+    • Emulator version 36.4.10.0 (build_id 15004761) (CL:N/A)
+    • Platform android-36.1, build-tools 36.1.0-rc1
+    • ANDROID_HOME = /Users/parthaghosh/Library/Android/sdk
+    • ANDROID_SDK_ROOT = /Users/parthaghosh/Library/Android/sdk
+    • Java binary at: /Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/java
+      This is the JDK bundled with the latest Android Studio installation on this machine.
+      To manually set the JDK path, use: `flutter config --jdk-dir="path/to/jdk"`.
+    • Java version OpenJDK Runtime Environment (build 21.0.9+-14787801-b1163.94)
+    • All Android licenses accepted.
+
+[!] Xcode - develop for iOS and macOS (Xcode 26.3) [15.3s]
+    • Xcode at /Applications/Xcode.app/Contents/Developer
+    • Build 17C529
+    ✗ CocoaPods not installed.
+        CocoaPods is a package manager for iOS or macOS platform code.
+        Without CocoaPods, plugins will not work on iOS or macOS.
+        For more info, see https://flutter.dev/to/platform-plugins
+      For installation instructions, see https://guides.cocoapods.org/using/getting-started.html#installation
+
+[✓] Chrome - develop for the web [47ms]
+    • Chrome at /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+
+[✓] Connected device (3 available) [31.0s]
+    • iPhone 17 Pro (mobile) • 75903DE8-814B-4B0C-9057-C25EB3EFD121 • ios            • com.apple.CoreSimulator.SimRuntime.iOS-26-2 (simulator)
+    • macOS (desktop)        • macos                                • darwin-arm64   • macOS 26.3.1 25D2128 darwin-arm64
+    • Chrome (web)           • chrome                               • web-javascript • Google Chrome 146.0.7680.80
+    ! Error: Browsing on the local area network for iPad. Ensure the device is unlocked and attached with a cable or associated with the same local area network as this Mac.
+      The device must be opted into Developer Mode to connect wirelessly. (code -27)
+
+[✓] Network resources [1,020ms]
+    • All expected network resources are available.
+
+! Doctor found issues in 2 categories.
+```

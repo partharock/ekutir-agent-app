@@ -28,124 +28,164 @@ extension ProcurementStepX on ProcurementStep {
   }
 }
 
-class ProcurementReceipt {
-  ProcurementReceipt({
+class ProcurementRecord {
+  const ProcurementRecord({
     required this.id,
     required this.farmerId,
     required this.farmerName,
-    required this.date,
-    required this.harvestDateTime,
-    required this.harvestedQtyKg,
-    required this.finalQtyKg,
-    required this.ratePerKg,
-    required this.receiptNo,
-    required this.carrierNumber,
-    required this.driverName,
-    required this.transportNotes,
-    this.message,
+    required this.crop,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.harvestDateOptions,
+    this.selectedHarvestDate,
+    this.harvestingTime = const TimeOfDay(hour: 8, minute: 0),
+    this.quantityHarvestedKg,
+    this.packagingDone = false,
+    this.packagingDate,
+    this.packagingNotes = '',
+    this.weighingDone = false,
+    this.weighingDate,
+    this.finalWeighingQtyKg,
+    this.weighingNotes = '',
+    this.ratePerKg = 42,
+    this.receiptGenerated = false,
+    this.receiptNumber,
+    this.receiptMessage = '',
+    this.transportAssigned = false,
+    this.transportDate,
+    this.carrierNumber = '',
+    this.driverName = '',
+    this.driverPhone = '',
+    this.transportNotes = '',
+    this.submitted = false,
   });
 
   final String id;
   final String farmerId;
   final String farmerName;
-  final DateTime date;
-  final DateTime harvestDateTime;
-  final double harvestedQtyKg;
-  final double finalQtyKg;
-  final double ratePerKg;
-  final String receiptNo;
-  final String carrierNumber;
-  final String driverName;
-  final String transportNotes;
-  final String? message;
-
-  double get totalAmount => finalQtyKg * ratePerKg;
-}
-
-class ProcurementDraft {
-  ProcurementDraft({
-    required this.farmerId,
-    this.stepIndex = 0,
-    DateTime? harvestingDate,
-    this.harvestingTime = const TimeOfDay(hour: 15, minute: 0),
-    this.quantityHarvestedKg = 380,
-    this.packagingStatus = 'Completed',
-    DateTime? packagingDate,
-    this.packagingNotes = 'Packed in 25kg crates.',
-    DateTime? weighingDate,
-    this.finalWeighingQtyKg = 420,
-    this.weighingNotes = 'Packed and weighed at the field collection point.',
-    this.ratePerKg = 450,
-    this.receiptMessage = 'Share the receipt with the farmer after confirmation.',
-    DateTime? transportDate,
-    this.carrierNumber = 'TRK-5582',
-    this.driverName = 'Name Surname',
-    this.driverPhone = '02156-64456',
-    this.transportNotes = 'Pickup from Trishal collection point.',
-  })
-      : harvestingDate = harvestingDate ?? DateTime(2026, 1, 25),
-        packagingDate = packagingDate ?? DateTime(2026, 1, 25),
-        weighingDate = weighingDate ?? DateTime(2026, 1, 25),
-        transportDate = transportDate ?? DateTime(2026, 1, 25);
-
-  final String farmerId;
-  final int stepIndex;
-  final DateTime harvestingDate;
+  final String crop;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final List<DateTime> harvestDateOptions;
+  final DateTime? selectedHarvestDate;
   final TimeOfDay harvestingTime;
-  final double quantityHarvestedKg;
-  final String packagingStatus;
-  final DateTime packagingDate;
+  final double? quantityHarvestedKg;
+  final bool packagingDone;
+  final DateTime? packagingDate;
   final String packagingNotes;
-  final DateTime weighingDate;
-  final double finalWeighingQtyKg;
+  final bool weighingDone;
+  final DateTime? weighingDate;
+  final double? finalWeighingQtyKg;
   final String weighingNotes;
   final double ratePerKg;
+  final bool receiptGenerated;
+  final String? receiptNumber;
   final String receiptMessage;
-  final DateTime transportDate;
+  final bool transportAssigned;
+  final DateTime? transportDate;
   final String carrierNumber;
   final String driverName;
   final String driverPhone;
   final String transportNotes;
+  final bool submitted;
 
-  ProcurementDraft copyWith({
+  bool get hasHarvesting =>
+      selectedHarvestDate != null && quantityHarvestedKg != null;
+
+  bool get hasPrice => finalWeighingQtyKg != null && finalWeighingQtyKg! > 0;
+
+  bool get isComplete =>
+      hasHarvesting &&
+      packagingDone &&
+      weighingDone &&
+      hasPrice &&
+      receiptGenerated &&
+      transportAssigned;
+
+  double get totalAmount => (finalWeighingQtyKg ?? 0) * ratePerKg;
+
+  List<ProcurementStep> get incompleteSteps {
+    final steps = <ProcurementStep>[];
+    if (!hasHarvesting) {
+      steps.add(ProcurementStep.harvesting);
+    }
+    if (!packagingDone) {
+      steps.add(ProcurementStep.packaging);
+    }
+    if (!weighingDone) {
+      steps.add(ProcurementStep.weighing);
+    }
+    if (!hasPrice) {
+      steps.add(ProcurementStep.price);
+    }
+    if (!receiptGenerated) {
+      steps.add(ProcurementStep.receipt);
+    }
+    if (!transportAssigned) {
+      steps.add(ProcurementStep.transport);
+    }
+    return steps;
+  }
+
+  ProcurementRecord copyWith({
+    String? id,
     String? farmerId,
-    int? stepIndex,
-    DateTime? harvestingDate,
+    String? farmerName,
+    String? crop,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    List<DateTime>? harvestDateOptions,
+    DateTime? selectedHarvestDate,
     TimeOfDay? harvestingTime,
     double? quantityHarvestedKg,
-    String? packagingStatus,
+    bool? packagingDone,
     DateTime? packagingDate,
     String? packagingNotes,
+    bool? weighingDone,
     DateTime? weighingDate,
     double? finalWeighingQtyKg,
     String? weighingNotes,
     double? ratePerKg,
+    bool? receiptGenerated,
+    String? receiptNumber,
     String? receiptMessage,
+    bool? transportAssigned,
     DateTime? transportDate,
     String? carrierNumber,
     String? driverName,
     String? driverPhone,
     String? transportNotes,
+    bool? submitted,
   }) {
-    return ProcurementDraft(
+    return ProcurementRecord(
+      id: id ?? this.id,
       farmerId: farmerId ?? this.farmerId,
-      stepIndex: stepIndex ?? this.stepIndex,
-      harvestingDate: harvestingDate ?? this.harvestingDate,
+      farmerName: farmerName ?? this.farmerName,
+      crop: crop ?? this.crop,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      harvestDateOptions: harvestDateOptions ?? this.harvestDateOptions,
+      selectedHarvestDate: selectedHarvestDate ?? this.selectedHarvestDate,
       harvestingTime: harvestingTime ?? this.harvestingTime,
       quantityHarvestedKg: quantityHarvestedKg ?? this.quantityHarvestedKg,
-      packagingStatus: packagingStatus ?? this.packagingStatus,
+      packagingDone: packagingDone ?? this.packagingDone,
       packagingDate: packagingDate ?? this.packagingDate,
       packagingNotes: packagingNotes ?? this.packagingNotes,
+      weighingDone: weighingDone ?? this.weighingDone,
       weighingDate: weighingDate ?? this.weighingDate,
       finalWeighingQtyKg: finalWeighingQtyKg ?? this.finalWeighingQtyKg,
       weighingNotes: weighingNotes ?? this.weighingNotes,
       ratePerKg: ratePerKg ?? this.ratePerKg,
+      receiptGenerated: receiptGenerated ?? this.receiptGenerated,
+      receiptNumber: receiptNumber ?? this.receiptNumber,
       receiptMessage: receiptMessage ?? this.receiptMessage,
+      transportAssigned: transportAssigned ?? this.transportAssigned,
       transportDate: transportDate ?? this.transportDate,
       carrierNumber: carrierNumber ?? this.carrierNumber,
       driverName: driverName ?? this.driverName,
       driverPhone: driverPhone ?? this.driverPhone,
       transportNotes: transportNotes ?? this.transportNotes,
+      submitted: submitted ?? this.submitted,
     );
   }
 }

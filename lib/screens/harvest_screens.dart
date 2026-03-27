@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
+import '../models/farmer.dart';
+import '../models/procurement.dart';
 import '../state/app_state.dart';
 import '../theme/app_colors.dart';
-import '../widgets/common.dart';
-import '../models/farmer.dart';
-import '../models/support.dart';
-import '../models/procurement.dart';
 import '../utils/formatters.dart';
+import '../widgets/common.dart';
 
 class HarvestHubScreen extends StatefulWidget {
   const HarvestHubScreen({super.key});
@@ -18,12 +18,13 @@ class HarvestHubScreen extends StatefulWidget {
 
 class _HarvestHubScreenState extends State<HarvestHubScreen> {
   String _query = '';
-  String? _selectedFarmerId;
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final farmers = appState.searchFarmers(_query);
+    final farmers = appState.searchFarmers(_query).where(
+      (farmer) => farmer.status == FarmerStatus.booked,
+    );
 
     return PageScaffold(
       title: 'Harvesting & Procurement',
@@ -42,80 +43,7 @@ class _HarvestHubScreenState extends State<HarvestHubScreen> {
           ...farmers.map(
             (farmer) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: SectionCard(
-                highlighted: farmer.id == _selectedFarmerId,
-                child: InkWell(
-                  onTap: () => setState(() {
-                    _selectedFarmerId = farmer.id;
-                  }),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              farmer.name,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                          StatusPill(
-                            label: farmer.stage.label,
-                            background: stageBackgroundColor(farmer.stage),
-                            foreground: stageForegroundColor(farmer.stage),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      InfoPair(label: 'Phone', value: farmer.phone),
-                      const SizedBox(height: 8),
-                      InfoPair(label: 'Location', value: farmer.location),
-                      const SizedBox(height: 8),
-                      InfoPair(
-                        label: 'Land Area',
-                        value: '${farmer.totalLandAcres.toStringAsFixed(0)} acres',
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          HistoryChip(
-                            label: farmer.supportHistory.any(
-                              (item) => item.type == SupportType.kind,
-                            )
-                                ? 'Kind: Acknowledged'
-                                : 'Kind: Pending',
-                          ),
-                          HistoryChip(
-                            label: farmer.supportHistory.any(
-                              (item) => item.type == SupportType.cash,
-                            )
-                                ? 'Cash: Acknowledged'
-                                : 'Cash: Pending',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            key: const Key('start_procurement_button'),
-            style: filledButtonStyle(),
-            onPressed: _selectedFarmerId == null
-                ? null
-                : () {
-                    appState.startProcurement(_selectedFarmerId!);
-                    context.push('/harvest/procurement');
-                  },
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Text('Start Procurement'),
+              child: _ProcurementFarmerCard(farmer: farmer),
             ),
           ),
         ],
@@ -125,7 +53,16 @@ class _HarvestHubScreenState extends State<HarvestHubScreen> {
 }
 
 class ProcurementFlowScreen extends StatefulWidget {
-  const ProcurementFlowScreen({super.key});
+  const ProcurementFlowScreen({
+    super.key,
+    this.farmerId,
+    this.recordId,
+    this.initialStep,
+  });
+
+  final String? farmerId;
+  final String? recordId;
+  final String? initialStep;
 
   @override
   State<ProcurementFlowScreen> createState() => _ProcurementFlowScreenState();
@@ -136,36 +73,35 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
   final _packagingNotesController = TextEditingController();
   final _weighingQtyController = TextEditingController();
   final _weighingNotesController = TextEditingController();
+  final _rateController = TextEditingController();
   final _receiptMessageController = TextEditingController();
   final _driverNameController = TextEditingController();
   final _driverPhoneController = TextEditingController();
   final _transportNotesController = TextEditingController();
   final _carrierController = TextEditingController();
-  String _packagingStatus = 'Completed';
 
-  static const _carrierOptions = ['TRK-5582', 'TRK-4471', 'TRK-6108'];
+  String? _lastSyncKey;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncControllers());
-  }
-
-  void _syncControllers() {
-    final draft = context.read<AppState>().procurementDraft;
-    if (draft == null) {
-      return;
-    }
-    _harvestQtyController.text = draft.quantityHarvestedKg.toStringAsFixed(0);
-    _packagingNotesController.text = draft.packagingNotes;
-    _weighingQtyController.text = draft.finalWeighingQtyKg.toStringAsFixed(0);
-    _weighingNotesController.text = draft.weighingNotes;
-    _receiptMessageController.text = draft.receiptMessage;
-    _driverNameController.text = draft.driverName;
-    _driverPhoneController.text = draft.driverPhone;
-    _transportNotesController.text = draft.transportNotes;
-    _carrierController.text = draft.carrierNumber;
-    _packagingStatus = draft.packagingStatus;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final farmerId = widget.farmerId;
+      if (farmerId == null && widget.recordId == null) {
+        return;
+      }
+      final step = widget.initialStep == null
+          ? null
+          : ProcurementStep.values.firstWhere(
+              (item) => item.name == widget.initialStep,
+              orElse: () => ProcurementStep.harvesting,
+            );
+      context.read<AppState>().startProcurementFlow(
+            farmerId ?? context.read<AppState>().repository.procurementById(widget.recordId!)!.farmerId,
+            recordId: widget.recordId,
+            step: step,
+          );
+    });
   }
 
   @override
@@ -174,6 +110,7 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
     _packagingNotesController.dispose();
     _weighingQtyController.dispose();
     _weighingNotesController.dispose();
+    _rateController.dispose();
     _receiptMessageController.dispose();
     _driverNameController.dispose();
     _driverPhoneController.dispose();
@@ -182,38 +119,52 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
     super.dispose();
   }
 
+  void _syncControllers(ProcurementRecord record, int stepIndex) {
+    final syncKey = '${record.id}|${record.updatedAt.microsecondsSinceEpoch}|$stepIndex';
+    if (_lastSyncKey == syncKey) {
+      return;
+    }
+    _lastSyncKey = syncKey;
+    _harvestQtyController.text =
+        (record.quantityHarvestedKg ?? 0).toStringAsFixed(0);
+    _packagingNotesController.text = record.packagingNotes;
+    _weighingQtyController.text =
+        (record.finalWeighingQtyKg ?? 0).toStringAsFixed(0);
+    _weighingNotesController.text = record.weighingNotes;
+    _rateController.text = record.ratePerKg.toStringAsFixed(0);
+    _receiptMessageController.text = record.receiptMessage;
+    _driverNameController.text = record.driverName;
+    _driverPhoneController.text = record.driverPhone;
+    _transportNotesController.text = record.transportNotes;
+    _carrierController.text = record.carrierNumber;
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final draft = appState.procurementDraft;
-    if (draft == null) {
+    final record = appState.activeProcurementRecord;
+    if (record == null) {
       return const PageScaffold(
         title: 'Procurement',
         showBack: true,
         child: EmptyStateCard(
-          message: 'Select a farmer from Harvest to start procurement.'
+          message: 'Select a farmer from Harvest to start procurement.',
         ),
       );
     }
-
-    final farmer = appState.farmerById(draft.farmerId);
-    final step = ProcurementStep.values[draft.stepIndex];
-    final readHarvestQty =
-        double.tryParse(_harvestQtyController.text) ?? draft.quantityHarvestedKg;
-    final readWeighQty =
-        double.tryParse(_weighingQtyController.text) ?? draft.finalWeighingQtyKg;
+    _syncControllers(record, appState.procurementStepIndex);
+    final farmer = appState.farmerById(record.farmerId);
+    final step = ProcurementStep.values[appState.procurementStepIndex];
 
     return PageScaffold(
       title: 'Procurement',
       showBack: true,
       onBack: () {
-        if (draft.stepIndex == 0) {
-          context.pop();
+        if (appState.procurementStepIndex == 0) {
+          context.go('/harvest');
           return;
         }
-        appState.updateProcurementDraft(
-          draft.copyWith(stepIndex: draft.stepIndex - 1),
-        );
+        appState.setProcurementStep(appState.procurementStepIndex - 1);
       },
       footer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -221,443 +172,160 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
           FilledButton(
             key: const Key('procurement_primary_button'),
             style: filledButtonStyle(),
-            onPressed: () {
-              final updatedDraft = _buildUpdatedDraft(draft);
-              if (updatedDraft == null) {
-                showMockSnackBar(
-                  context,
-                  'Please complete the current step before continuing.',
-                );
-                return;
-              }
-              if (draft.stepIndex == ProcurementStep.values.length - 1) {
-                appState.updateProcurementDraft(updatedDraft);
-                final success = appState.submitProcurement();
-                if (success) {
-                  context.go('/harvest/success');
-                }
-                return;
-              }
-              appState.updateProcurementDraft(
-                updatedDraft.copyWith(stepIndex: draft.stepIndex + 1),
-              );
-            },
+            onPressed: () => _handlePrimaryAction(context, appState, record, step),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                draft.stepIndex == ProcurementStep.values.length - 1
-                    ? 'Submit Procurement'
-                    : 'Save and Continue',
-              ),
+              child: Text(_primaryButtonLabel(step)),
             ),
-          ),
-          const SizedBox(height: 10),
-          TextButton(
-            onPressed: () {
-              final updatedDraft = _buildUpdatedDraft(draft);
-              if (updatedDraft != null) {
-                appState.updateProcurementDraft(updatedDraft);
-              }
-              appState.saveProcurementDraft();
-              showMockSnackBar(
-                context,
-                'Procurement draft saved for this session.',
-              );
-            },
-            child: const Text('Save as Draft'),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ProcurementStepper(currentStep: draft.stepIndex),
+          ProcurementStepper(currentStep: appState.procurementStepIndex),
           const SizedBox(height: 18),
-          if (step == ProcurementStep.harvesting) ...[
-            Text(
-              'Farmer Details',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            FarmerDetailSummary(farmer: farmer),
-            const SizedBox(height: 18),
-            Text(
-              'Procurement',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Harvesting Details',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: TextEditingController(text: farmer.crop),
-                    enabled: false,
-                    decoration: const InputDecoration(labelText: 'Crop'),
-                  ),
-                  const SizedBox(height: 12),
-                  DatePickerField(
-                    label: 'Harvesting Date',
-                    initialDate: draft.harvestingDate,
-                    onDateSelected: (date) => appState.updateProcurementDraft(
-                      draft.copyWith(harvestingDate: date),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TimePickerField(
-                    label: 'Time of Harvesting',
-                    initialTime: draft.harvestingTime,
-                    onTimeSelected: (value) => appState.updateProcurementDraft(
-                      draft.copyWith(harvestingTime: value),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _harvestQtyController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Quantity Harvested *',
-                      suffixText: 'kg',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          if (step == ProcurementStep.packaging)
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Packaging Details',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: ['Not Started', 'In Progress', 'Completed']
-                        .map(
-                          (label) => ChoiceChip(
-                            label: Text(label),
-                            selected: _packagingStatus == label,
-                            onSelected: (_) => setState(() {
-                              _packagingStatus = label;
-                            }),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  DatePickerField(
-                    label: 'Packaging Date',
-                    initialDate: draft.packagingDate,
-                    onDateSelected: (date) => appState.updateProcurementDraft(
-                      draft.copyWith(packagingDate: date),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _packagingNotesController,
-                    maxLines: 4,
-                    decoration: const InputDecoration(labelText: 'Notes'),
-                  ),
-                ],
-              ),
-            ),
-          if (step == ProcurementStep.weighing) ...[
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Weighing Details',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  DatePickerField(
-                    label: 'Weighing Date',
-                    initialDate: draft.weighingDate,
-                    onDateSelected: (date) => appState.updateProcurementDraft(
-                      draft.copyWith(weighingDate: date),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _weighingQtyController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Final Weighing Quantity *',
-                      suffixText: 'kg',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _weighingNotesController,
-                    maxLines: 4,
-                    decoration: const InputDecoration(labelText: 'Notes'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            SectionCard(
-              backgroundColor: AppColors.brandBlueLight,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Quantity Comparison',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  InfoPair(
-                    label: 'Harvested Qty',
-                    value: '${readHarvestQty.toStringAsFixed(0)} kg',
-                  ),
-                  const SizedBox(height: 8),
-                  InfoPair(
-                    label: 'Final Weighed Qty',
-                    value: '${readWeighQty.toStringAsFixed(0)} kg',
-                  ),
-                  const SizedBox(height: 8),
-                  InfoPair(
-                    label: 'Difference',
-                    value:
-                        '${readWeighQty >= readHarvestQty ? '+' : ''}${(readWeighQty - readHarvestQty).toStringAsFixed(0)} kg',
-                  ),
-                ],
-              ),
-            ),
-          ],
-          if (step == ProcurementStep.price)
-            SectionCard(
-              backgroundColor: AppColors.brandBlueLight,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Price Breakdown',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  InfoPair(
-                    label: 'Quantity',
-                    value: '${readWeighQty.toStringAsFixed(0)} kg',
-                  ),
-                  const SizedBox(height: 8),
-                  InfoPair(
-                    label: 'Rate per kg',
-                    value: '${currency(draft.ratePerKg)} / kg',
-                  ),
-                  const Divider(height: 24),
-                  InfoPair(
-                    label: 'Total Amount',
-                    value: currency(readWeighQty * draft.ratePerKg),
-                  ),
-                ],
-              ),
-            ),
-          if (step == ProcurementStep.receipt) ...[
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Receipt Preview',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  InfoPair(label: 'Date', value: formatDate(draft.transportDate)),
-                  const SizedBox(height: 8),
-                  const InfoPair(label: 'Receipt No', value: 'REC-10293'),
-                  const SizedBox(height: 8),
-                  InfoPair(label: 'Farmer', value: farmer.name),
-                  const SizedBox(height: 8),
-                  InfoPair(label: 'Crop', value: farmer.crop),
-                  const SizedBox(height: 8),
-                  InfoPair(
-                    label: 'Rate per kg',
-                    value: currency(draft.ratePerKg),
-                  ),
-                  const SizedBox(height: 8),
-                  InfoPair(
-                    label: 'Quantity',
-                    value: '${readWeighQty.toStringAsFixed(0)} kg',
-                  ),
-                  const Divider(height: 24),
-                  InfoPair(
-                    label: 'Total Amount',
-                    value: currency(readWeighQty * draft.ratePerKg),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              onPressed: () => showMockSnackBar(
-                context,
-                'Receipt generation is mocked in v1.',
-              ),
-              icon: const Icon(Icons.description_outlined),
-              label: const Text('Generate Receipt'),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: () => showMockSnackBar(
-                context,
-                'Receipt sharing is mocked in v1.',
-              ),
-              icon: const Icon(Icons.share_outlined),
-              label: const Text('Share Receipt'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _receiptMessageController,
-              maxLines: 4,
-              decoration: const InputDecoration(labelText: 'Message'),
-            ),
-          ],
-          if (step == ProcurementStep.transport)
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Transport Details',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  DatePickerField(
-                    label: 'Transport Date',
-                    initialDate: draft.transportDate,
-                    onDateSelected: (date) => appState.updateProcurementDraft(
-                      draft.copyWith(transportDate: date),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _carrierOptions.contains(_carrierController.text)
-                        ? _carrierController.text
-                        : _carrierOptions.first,
-                    items: _carrierOptions
-                        .map(
-                          (carrier) => DropdownMenuItem<String>(
-                            value: carrier,
-                            child: Text(carrier),
-                          ),
-                        )
-                        .toList(),
-                    decoration:
-                        const InputDecoration(labelText: 'Carrier Number'),
-                    onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
-                      setState(() {
-                        _carrierController.text = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _driverNameController,
-                    decoration:
-                        const InputDecoration(labelText: 'Driver Name'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _driverPhoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration:
-                        const InputDecoration(labelText: 'Driver Phone No'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _transportNotesController,
-                    maxLines: 4,
-                    decoration:
-                        const InputDecoration(labelText: 'Transport Notes'),
-                  ),
-                ],
-              ),
-            ),
+          Text('Farmer Details', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          FarmerDetailSummary(farmer: farmer),
+          const SizedBox(height: 18),
+          if (step == ProcurementStep.harvesting)
+            _HarvestingStep(record: record)
+          else if (step == ProcurementStep.packaging)
+            _PackagingStep(record: record)
+          else if (step == ProcurementStep.weighing)
+            _WeighingStep(record: record)
+          else if (step == ProcurementStep.price)
+            _PriceStep(record: record)
+          else if (step == ProcurementStep.receipt)
+            _ReceiptStep(record: record)
+          else
+            _TransportStep(record: record),
         ],
       ),
     );
   }
 
-  ProcurementDraft? _buildUpdatedDraft(ProcurementDraft draft) {
-    final harvestQty =
-        double.tryParse(_harvestQtyController.text.trim()) ??
-            draft.quantityHarvestedKg;
-    final finalQty =
-        double.tryParse(_weighingQtyController.text.trim()) ??
-            draft.finalWeighingQtyKg;
-    final step = ProcurementStep.values[draft.stepIndex];
-
+  String _primaryButtonLabel(ProcurementStep step) {
     switch (step) {
       case ProcurementStep.harvesting:
-        if (harvestQty <= 0) {
+        return 'Save Harvesting';
+      case ProcurementStep.packaging:
+        return 'Save Packaging';
+      case ProcurementStep.weighing:
+        return 'Save Weighing';
+      case ProcurementStep.price:
+        return 'Save Price';
+      case ProcurementStep.receipt:
+        return 'Generate Receipt';
+      case ProcurementStep.transport:
+        return 'Submit Procurement';
+    }
+  }
+
+  void _handlePrimaryAction(
+    BuildContext context,
+    AppState appState,
+    ProcurementRecord record,
+    ProcurementStep step,
+  ) {
+    final updated = _buildUpdatedRecord(record, step);
+    if (updated == null) {
+      showMockSnackBar(
+        context,
+        'Please complete the current step before continuing.',
+      );
+      return;
+    }
+
+    appState.updateProcurementDraft(updated);
+    if (step == ProcurementStep.transport) {
+      final success = appState.submitProcurement();
+      if (!success) {
+        showMockSnackBar(context, 'Procurement is not complete yet.');
+        return;
+      }
+      context.go('/harvest/success?recordId=${updated.id}');
+      return;
+    }
+
+    appState.setProcurementStep(appState.procurementStepIndex + 1);
+  }
+
+  ProcurementRecord? _buildUpdatedRecord(
+    ProcurementRecord record,
+    ProcurementStep step,
+  ) {
+    switch (step) {
+      case ProcurementStep.harvesting:
+        final quantity = double.tryParse(_harvestQtyController.text.trim());
+        if (record.selectedHarvestDate == null || quantity == null || quantity <= 0) {
           return null;
         }
-        return draft.copyWith(quantityHarvestedKg: harvestQty);
+        return record.copyWith(
+          quantityHarvestedKg: quantity,
+        );
       case ProcurementStep.packaging:
-        return draft.copyWith(
-          packagingStatus: _packagingStatus,
-          packagingNotes: _packagingNotesController.text.trim().isEmpty
-              ? draft.packagingNotes
-              : _packagingNotesController.text.trim(),
+        if (record.packagingDate == null) {
+          return null;
+        }
+        return record.copyWith(
+          packagingDone: true,
+          packagingNotes: _packagingNotesController.text.trim(),
         );
       case ProcurementStep.weighing:
-        if (finalQty <= 0) {
+        final finalQty = double.tryParse(_weighingQtyController.text.trim());
+        if (record.weighingDate == null || finalQty == null || finalQty <= 0) {
           return null;
         }
-        return draft.copyWith(
+        return record.copyWith(
+          weighingDone: true,
           finalWeighingQtyKg: finalQty,
-          weighingNotes: _weighingNotesController.text.trim().isEmpty
-              ? draft.weighingNotes
-              : _weighingNotesController.text.trim(),
+          weighingNotes: _weighingNotesController.text.trim(),
         );
       case ProcurementStep.price:
-        return draft;
-      case ProcurementStep.receipt:
-        return draft.copyWith(
-          receiptMessage: _receiptMessageController.text.trim().isEmpty
-              ? draft.receiptMessage
-              : _receiptMessageController.text.trim(),
-        );
-      case ProcurementStep.transport:
-        if (_driverNameController.text.trim().isEmpty ||
-            _driverPhoneController.text.trim().isEmpty) {
+        final rate = double.tryParse(_rateController.text.trim());
+        if (rate == null || rate <= 0 || record.finalWeighingQtyKg == null) {
           return null;
         }
-        return draft.copyWith(
-          carrierNumber: _carrierController.text.trim().isEmpty
-              ? draft.carrierNumber
-              : _carrierController.text.trim(),
+        return record.copyWith(ratePerKg: rate);
+      case ProcurementStep.receipt:
+        return record.copyWith(
+          receiptGenerated: true,
+          receiptNumber: record.receiptNumber ??
+              'REC-${1000 + DateTime.now().millisecond}',
+          receiptMessage: _receiptMessageController.text.trim(),
+        );
+      case ProcurementStep.transport:
+        if (record.transportDate == null ||
+            _carrierController.text.trim().isEmpty ||
+            _driverNameController.text.trim().isEmpty ||
+            _driverPhoneController.text.trim().isEmpty ||
+            !record.receiptGenerated) {
+          return null;
+        }
+        return record.copyWith(
+          transportAssigned: true,
+          carrierNumber: _carrierController.text.trim(),
           driverName: _driverNameController.text.trim(),
           driverPhone: _driverPhoneController.text.trim(),
-          transportNotes: _transportNotesController.text.trim().isEmpty
-              ? draft.transportNotes
-              : _transportNotesController.text.trim(),
+          transportNotes: _transportNotesController.text.trim(),
         );
     }
   }
 }
 
 class ProcurementSuccessScreen extends StatelessWidget {
-  const ProcurementSuccessScreen({super.key});
+  const ProcurementSuccessScreen({super.key, this.recordId});
+
+  final String? recordId;
 
   @override
   Widget build(BuildContext context) {
-    final receipt = context.watch<AppState>().lastProcurementReceipt;
+    final appState = context.watch<AppState>();
+    final record = recordId == null
+        ? appState.lastProcurementReceipt
+        : appState.repository.procurementById(recordId!);
 
     return PageScaffold(
       title: 'Procurement',
@@ -675,75 +343,480 @@ class ProcurementSuccessScreen extends StatelessWidget {
             'Procurement Completed',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
-          const SizedBox(height: 6),
-          const StatusPill(
-            label: 'Submitted',
-            background: AppColors.pageBackground,
-            foreground: AppColors.textSecondary,
-          ),
           const SizedBox(height: 18),
-          if (receipt != null)
+          if (record != null)
             SectionCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Summary Details',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  InfoPair(label: 'Farmer', value: receipt.farmerName),
+                  InfoPair(label: 'Farmer', value: record.farmerName),
                   const SizedBox(height: 8),
                   InfoPair(
-                    label: 'Harvesting Date/Time',
-                    value: formatDateTime(receipt.harvestDateTime),
+                    label: 'Receipt',
+                    value: record.receiptNumber ?? 'Pending',
                   ),
                   const SizedBox(height: 8),
                   InfoPair(
-                    label: 'Harvested Qty',
-                    value: '${receipt.harvestedQtyKg.toStringAsFixed(0)} kg',
+                    label: 'Final Quantity',
+                    value: '${(record.finalWeighingQtyKg ?? 0).toStringAsFixed(0)} kg',
                   ),
                   const SizedBox(height: 8),
                   InfoPair(
-                    label: 'Final Weighed Qty',
-                    value: '${receipt.finalQtyKg.toStringAsFixed(0)} kg',
-                  ),
-                  const SizedBox(height: 8),
-                  InfoPair(
-                    label: 'Rate',
-                    value: '${currency(receipt.ratePerKg)} / kg',
-                  ),
-                  const SizedBox(height: 8),
-                  InfoPair(label: 'Total', value: currency(receipt.totalAmount)),
-                  const SizedBox(height: 8),
-                  InfoPair(label: 'Receipt', value: receipt.receiptNo),
-                  const SizedBox(height: 8),
-                  InfoPair(
-                    label: 'Transport',
-                    value: '${receipt.carrierNumber} • ${receipt.driverName}',
+                    label: 'Total',
+                    value: currency(record.totalAmount),
                   ),
                 ],
               ),
             ),
           const SizedBox(height: 20),
+          if (record != null)
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton(
+                  style: filledButtonStyle(),
+                  onPressed: () => context.go('/engage/farmer/${record.farmerId}?tab=profile'),
+                  child: const Text('Open Farmer Profile'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final success = await appState.shareProcurementReceipt(record.id);
+                    if (context.mounted) {
+                      showMockSnackBar(
+                        context,
+                        success ? 'Receipt shared.' : 'Unable to share receipt.',
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.share_outlined),
+                  label: const Text('Share Receipt'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final success = await appState.printProcurementReceipt(record.id);
+                    if (context.mounted) {
+                      showMockSnackBar(
+                        context,
+                        success ? 'Print dialog opened.' : 'Unable to print receipt.',
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.print_outlined),
+                  label: const Text('Print Receipt'),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProcurementFarmerCard extends StatelessWidget {
+  const _ProcurementFarmerCard({required this.farmer});
+
+  final FarmerProfile farmer;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final procurement = appState.latestProcurement(farmer.id);
+    final harvestDates = appState.harvestDateOptionsFor(farmer.id);
+    final buttonLabel = procurement == null
+        ? 'Start Procurement'
+        : procurement.submitted
+            ? 'View Receipt'
+            : 'Resume Procurement';
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  farmer.name,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              StatusPill(
+                label: farmer.stage.label,
+                background: stageBackgroundColor(farmer.stage),
+                foreground: stageForegroundColor(farmer.stage),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          InfoPair(label: 'Phone', value: farmer.phone),
+          const SizedBox(height: 8),
+          InfoPair(label: 'Location', value: farmer.location),
+          const SizedBox(height: 8),
+          InfoPair(
+            label: 'Harvest Dates',
+            value: harvestDates.isEmpty
+                ? 'No dates in crop plan'
+                : harvestDates.map(formatDate).join(', '),
+          ),
+          const SizedBox(height: 8),
+          InfoPair(
+            label: 'Procurement Status',
+            value: procurement == null
+                ? 'Not started'
+                : procurement.submitted
+                    ? 'Submitted'
+                    : '${procurement.incompleteSteps.length} steps pending',
+          ),
+          const SizedBox(height: 12),
+          if (procurement != null && !procurement.submitted)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: procurement.incompleteSteps
+                  .map(
+                    (step) => StatusPill(
+                      label: step.label,
+                      background: AppColors.brandBlueLight,
+                      foreground: AppColors.brandBlue,
+                    ),
+                  )
+                  .toList(),
+            ),
+          const SizedBox(height: 12),
           FilledButton(
             style: filledButtonStyle(),
-            onPressed: () {
-              if (receipt == null) {
-                context.go('/harvest');
+            onPressed: () => context.go(
+              '/harvest/procurement?farmerId=${farmer.id}${procurement == null ? '' : '&recordId=${procurement.id}${procurement.incompleteSteps.isEmpty ? '' : '&step=${procurement.incompleteSteps.first.name}'}'}',
+            ),
+            child: Text(buttonLabel),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HarvestingStep extends StatelessWidget {
+  const _HarvestingStep({required this.record});
+
+  final ProcurementRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Harvesting Details', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<DateTime>(
+            initialValue: record.selectedHarvestDate,
+            items: record.harvestDateOptions
+                .map(
+                  (date) => DropdownMenuItem<DateTime>(
+                    value: date,
+                    child: Text(formatDate(date)),
+                  ),
+                )
+                .toList(),
+            decoration: const InputDecoration(labelText: 'Harvesting Date'),
+            onChanged: (value) {
+              if (value == null) {
                 return;
               }
-              context.go('/engage/farmer/${receipt.farmerId}');
+              appState.updateProcurementDraft(record.copyWith(selectedHarvestDate: value));
             },
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              child: Text('Open Farmer Profile'),
+          ),
+          const SizedBox(height: 12),
+          TimePickerField(
+            label: 'Time of Harvesting',
+            initialTime: record.harvestingTime,
+            onTimeSelected: (value) =>
+                appState.updateProcurementDraft(record.copyWith(harvestingTime: value)),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: (context.findAncestorStateOfType<_ProcurementFlowScreenState>()?._harvestQtyController)!,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Quantity Harvested',
+              suffixText: 'kg',
             ),
           ),
-          const SizedBox(height: 10),
-          TextButton(
-            onPressed: () => context.go('/harvest'),
-            child: const Text('Start New Procurement'),
+        ],
+      ),
+    );
+  }
+}
+
+class _PackagingStep extends StatelessWidget {
+  const _PackagingStep({required this.record});
+
+  final ProcurementRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final parent = context.findAncestorStateOfType<_ProcurementFlowScreenState>()!;
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Packaging Details', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 14),
+          DatePickerField(
+            label: 'Packaging Date',
+            initialDate: record.packagingDate ?? appState.today,
+            onDateSelected: (date) =>
+                appState.updateProcurementDraft(record.copyWith(packagingDate: date)),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: parent._packagingNotesController,
+            maxLines: 4,
+            decoration: const InputDecoration(labelText: 'Packaging Notes'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeighingStep extends StatelessWidget {
+  const _WeighingStep({required this.record});
+
+  final ProcurementRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final parent = context.findAncestorStateOfType<_ProcurementFlowScreenState>()!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Weighing Details', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 14),
+              DatePickerField(
+                label: 'Weighing Date',
+                initialDate: record.weighingDate ?? appState.today,
+                onDateSelected: (date) =>
+                    appState.updateProcurementDraft(record.copyWith(weighingDate: date)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: parent._weighingQtyController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Final Weighing Quantity',
+                  suffixText: 'kg',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: parent._weighingNotesController,
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'Weighing Notes'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SectionCard(
+          backgroundColor: AppColors.brandBlueLight,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Quantity Comparison', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              InfoPair(
+                label: 'Harvested Qty',
+                value: '${(record.quantityHarvestedKg ?? 0).toStringAsFixed(0)} kg',
+              ),
+              const SizedBox(height: 8),
+              InfoPair(
+                label: 'Final Weighed Qty',
+                value: '${(record.finalWeighingQtyKg ?? 0).toStringAsFixed(0)} kg',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PriceStep extends StatelessWidget {
+  const _PriceStep({required this.record});
+
+  final ProcurementRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final parent = context.findAncestorStateOfType<_ProcurementFlowScreenState>()!;
+    final qty = record.finalWeighingQtyKg ?? 0;
+    final rate = double.tryParse(parent._rateController.text.trim()) ?? record.ratePerKg;
+    return SectionCard(
+      backgroundColor: AppColors.brandBlueLight,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Price Breakdown', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 14),
+          TextField(
+            controller: parent._rateController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Rate per kg',
+              prefixText: '₹',
+            ),
+          ),
+          const SizedBox(height: 12),
+          InfoPair(label: 'Quantity', value: '${qty.toStringAsFixed(0)} kg'),
+          const SizedBox(height: 8),
+          InfoPair(label: 'Total Amount', value: currency(qty * rate)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReceiptStep extends StatelessWidget {
+  const _ReceiptStep({required this.record});
+
+  final ProcurementRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final parent = context.findAncestorStateOfType<_ProcurementFlowScreenState>()!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Receipt Preview', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 14),
+              InfoPair(label: 'Receipt No', value: record.receiptNumber ?? 'Pending'),
+              const SizedBox(height: 8),
+              InfoPair(
+                label: 'Quantity',
+                value: '${(record.finalWeighingQtyKg ?? 0).toStringAsFixed(0)} kg',
+              ),
+              const SizedBox(height: 8),
+              InfoPair(label: 'Rate per kg', value: currency(record.ratePerKg)),
+              const SizedBox(height: 8),
+              InfoPair(label: 'Total Amount', value: currency(record.totalAmount)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: parent._receiptMessageController,
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'Farmer Message'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () async {
+                final updated = record.copyWith(
+                  receiptGenerated: true,
+                  receiptNumber: record.receiptNumber ??
+                      'REC-${1000 + DateTime.now().millisecond}',
+                  receiptMessage: parent._receiptMessageController.text.trim(),
+                );
+                appState.updateProcurementDraft(updated);
+                final success = await appState.shareProcurementReceipt(updated.id);
+                if (context.mounted) {
+                  showMockSnackBar(
+                    context,
+                    success ? 'Receipt shared.' : 'Unable to share receipt.',
+                  );
+                }
+              },
+              icon: const Icon(Icons.share_outlined),
+              label: const Text('Share Receipt'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final updated = record.copyWith(
+                  receiptGenerated: true,
+                  receiptNumber: record.receiptNumber ??
+                      'REC-${1000 + DateTime.now().millisecond}',
+                  receiptMessage: parent._receiptMessageController.text.trim(),
+                );
+                appState.updateProcurementDraft(updated);
+                final success = await appState.printProcurementReceipt(updated.id);
+                if (context.mounted) {
+                  showMockSnackBar(
+                    context,
+                    success ? 'Print dialog opened.' : 'Unable to print receipt.',
+                  );
+                }
+              },
+              icon: const Icon(Icons.print_outlined),
+              label: const Text('Print Receipt'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TransportStep extends StatelessWidget {
+  const _TransportStep({required this.record});
+
+  final ProcurementRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final parent = context.findAncestorStateOfType<_ProcurementFlowScreenState>()!;
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Transport Details', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 14),
+          DatePickerField(
+            label: 'Transport Date',
+            initialDate: record.transportDate ?? appState.today,
+            onDateSelected: (date) =>
+                appState.updateProcurementDraft(record.copyWith(transportDate: date)),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: parent._carrierController,
+            decoration: const InputDecoration(labelText: 'Carrier Number'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: parent._driverNameController,
+            decoration: const InputDecoration(labelText: 'Driver Name'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: parent._driverPhoneController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(labelText: 'Driver Phone No'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: parent._transportNotesController,
+            maxLines: 4,
+            decoration: const InputDecoration(labelText: 'Transport Notes'),
           ),
         ],
       ),
@@ -758,100 +831,20 @@ class ProcurementStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: List.generate(ProcurementStep.values.length, (index) {
         final step = ProcurementStep.values[index];
-        final isDone = index < currentStep;
-        final isCurrent = index == currentStep;
-        return Expanded(
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  if (index > 0)
-                    Expanded(
-                      child: Container(
-                        height: 2,
-                        color: index <= currentStep
-                            ? AppColors.brandGreen
-                            : AppColors.cardBorder,
-                      ),
-                    ),
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDone || isCurrent
-                          ? AppColors.brandGreen
-                          : Colors.white,
-                      border: Border.all(
-                        color: isDone || isCurrent
-                            ? AppColors.brandGreen
-                            : AppColors.cardBorder,
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: isDone
-                        ? const Icon(Icons.check, size: 14, color: Colors.white)
-                        : Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              color: isCurrent
-                                  ? Colors.white
-                                  : AppColors.textSecondary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
-                            ),
-                          ),
-                  ),
-                  if (index < ProcurementStep.values.length - 1)
-                    Expanded(
-                      child: Container(
-                        height: 2,
-                        color: index < currentStep
-                            ? AppColors.brandGreen
-                            : AppColors.cardBorder,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                step.label,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
+        final isActive = index <= currentStep;
+        return StatusPill(
+          label: step.label,
+          background:
+              isActive ? AppColors.brandGreenLight : AppColors.surfaceMuted,
+          foreground:
+              isActive ? AppColors.brandGreenDark : AppColors.textSecondary,
         );
       }),
-    );
-  }
-}
-
-class HistoryChip extends StatelessWidget {
-  const HistoryChip({super.key, required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.brandGreen.withValues(alpha: 0.5)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.brandGreenDark,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
     );
   }
 }

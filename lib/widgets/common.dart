@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:math' as math;
+
 import '../theme/app_colors.dart';
 import '../models/farmer.dart';
-import '../models/crop_plan.dart';
-import '../models/support.dart';
-import '../models/procurement.dart';
 import '../utils/formatters.dart';
-import 'dart:math' as math;
 
 class BrandMark extends StatelessWidget {
   const BrandMark({super.key, this.size = 44});
@@ -68,24 +66,41 @@ class BrandMarkPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// inside lib/widgets/common.dart
 class EmptyStateCard extends StatelessWidget {
-  final String message;
-
-  // Make sure the constructor is const and fields are final
   const EmptyStateCard({
     super.key,
-    required this.message
+    required this.message,
   });
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return SectionCard(
+      backgroundColor: AppColors.surfaceMuted,
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Column(
           children: [
-            Text(message),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.heroMist,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.inbox_outlined,
+                color: AppColors.heroForest,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
           ],
         ),
       ),
@@ -184,7 +199,7 @@ class StatusPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: foreground.withOpacity(0.24)),
+        border: Border.all(color: foreground.withValues(alpha: 0.24)),
       ),
       child: Text(
         label,
@@ -213,7 +228,8 @@ class SearchField extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hintText,
-        prefixIcon: const Icon(Icons.search, size: 20),
+        prefixIcon:
+            const Icon(Icons.search, size: 20, color: AppColors.heroForest),
         fillColor: const Color(0xFFF4F5F8),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -250,68 +266,72 @@ class PageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 44,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (showBack)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: IconButton(
-                            onPressed: onBack ?? () => context.pop(),
-                            icon: const Icon(Icons.arrow_back),
-                          ),
-                        ),
-                      Text(
-                        title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
-                            ?.copyWith(fontSize: 20),
-                      ),
-                    ],
-                  ),
-                ),
-                if (description != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    description!,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                ],
-                if (subtitle != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    subtitle!,
-                    style: Theme.of(context)
-                        .textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
-              child: child,
-            ),
-          ),
-          if (footer != null)
+    return Scaffold(
+      backgroundColor: AppColors.pageBackground,
+      body: SafeArea(
+        child: Column(
+          children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-              child: footer!,
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 44,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (showBack)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: IconButton(
+                              onPressed: onBack ?? () => context.pop(),
+                              icon: const Icon(Icons.arrow_back),
+                            ),
+                          ),
+                        Text(
+                          title,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(fontSize: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (description != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      description!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ],
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      subtitle!,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ],
+              ),
             ),
-        ],
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
+                child: child,
+              ),
+            ),
+            if (footer != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                child: footer!,
+              ),
+          ],
+        ),
       ),
     );
   }
