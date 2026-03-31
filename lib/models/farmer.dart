@@ -183,3 +183,51 @@ class FarmerProfile {
     );
   }
 }
+
+class NewFarmerDraft {
+  const NewFarmerDraft({
+    required this.name,
+    required this.phone,
+    required this.location,
+    required this.crop,
+    required this.season,
+    required this.landDetails,
+    required this.totalLandAcres,
+    required this.nurseryLandAcres,
+    required this.mainLandAcres,
+  });
+
+  final String name;
+  final String phone;
+  final String location;
+  final String crop;
+  final String season;
+  final String landDetails;
+  final double totalLandAcres;
+  final double nurseryLandAcres;
+  final double mainLandAcres;
+
+  NewFarmerDraft copyWith({
+    String? name,
+    String? phone,
+    String? location,
+    String? crop,
+    String? season,
+    String? landDetails,
+    double? totalLandAcres,
+    double? nurseryLandAcres,
+    double? mainLandAcres,
+  }) {
+    return NewFarmerDraft(
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      location: location ?? this.location,
+      crop: crop ?? this.crop,
+      season: season ?? this.season,
+      landDetails: landDetails ?? this.landDetails,
+      totalLandAcres: totalLandAcres ?? this.totalLandAcres,
+      nurseryLandAcres: nurseryLandAcres ?? this.nurseryLandAcres,
+      mainLandAcres: mainLandAcres ?? this.mainLandAcres,
+    );
+  }
+}

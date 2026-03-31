@@ -25,8 +25,9 @@ const int _debugSupportStep =
 const int _debugProcurementStep =
     int.fromEnvironment('DEBUG_PROCUREMENT_STEP', defaultValue: -1);
 
-void main() {
-  final appState = AppState.seeded();
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final appState = await AppState.create();
   if (_debugAutoLogin) {
     appState.isAuthenticated = true;
   }
@@ -149,6 +150,10 @@ GoRouter _createRouter(AppState appState) {
               };
               return EngagementScreen(initialTab: tab);
             },
+          ),
+          GoRoute(
+            path: '/engage/add',
+            builder: (context, state) => const AddWillingFarmerScreen(),
           ),
           GoRoute(
             path: '/engage/farmer/:farmerId',

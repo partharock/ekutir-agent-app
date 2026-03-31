@@ -75,7 +75,42 @@ class AppState extends ChangeNotifier {
       currentSeason: 'Kharif 2026',
       agentStatus: 'Field operations active',
       today: seedToday,
-      repository: repository ?? SeededWorkflowRepository.seeded(today: seedToday),
+      repository:
+          repository ?? SeededWorkflowRepository.seeded(today: seedToday),
+      deviceActions: deviceActions ?? PlatformDeviceActionService(),
+      receiptService: receiptService ?? PdfReceiptService(),
+      misaMessages: [
+        MisaMessage(
+          id: 'misa_welcome',
+          author: MisaMessageAuthor.assistant,
+          message:
+              'Hi Ravi, I’m MISA - your Farming Assistant! Ask for today’s priorities, a farmer-specific next step, or settlement readiness.',
+          timestamp: DateTime(
+            seedToday.year,
+            seedToday.month,
+            seedToday.day,
+            8,
+          ),
+        ),
+      ],
+    );
+  }
+
+  static Future<AppState> create({
+    WorkflowRepository? repository,
+    DeviceActionService? deviceActions,
+    ReceiptService? receiptService,
+    DateTime? today,
+  }) async {
+    final seedToday = _dateOnly(today ?? DateTime.now());
+    return AppState(
+      agentName: 'Ravi',
+      agentCrop: 'Rice',
+      currentSeason: 'Kharif 2026',
+      agentStatus: 'Field operations active',
+      today: seedToday,
+      repository: repository ??
+          await PersistedWorkflowRepository.create(today: seedToday),
       deviceActions: deviceActions ?? PlatformDeviceActionService(),
       receiptService: receiptService ?? PdfReceiptService(),
       misaMessages: [
@@ -141,13 +176,11 @@ class AppState extends ChangeNotifier {
       return existing;
     }
     final farmer = farmerById(farmerId);
-    final supportValue = supportFor(farmerId)
-        .where((item) => item.isAcknowledged)
-        .fold<double>(
-          0,
-          (value, item) =>
-              value + (item.cashAmount ?? item.kindValue ?? 0),
-        );
+    final supportValue =
+        supportFor(farmerId).where((item) => item.isAcknowledged).fold<double>(
+              0,
+              (value, item) => value + (item.cashAmount ?? item.kindValue ?? 0),
+            );
     final procurementValue = procurementFor(farmerId)
         .where((item) => item.submitted)
         .fold<double>(0, (value, item) => value + item.totalAmount);
@@ -162,15 +195,13 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  List<SupportRecord> get allSupportRecords => farmers
-      .expand((item) => supportFor(item.id))
-      .toList()
-    ..sort((left, right) => right.updatedAt.compareTo(left.updatedAt));
+  List<SupportRecord> get allSupportRecords =>
+      farmers.expand((item) => supportFor(item.id)).toList()
+        ..sort((left, right) => right.updatedAt.compareTo(left.updatedAt));
 
-  List<ProcurementRecord> get allProcurementRecords => farmers
-      .expand((item) => procurementFor(item.id))
-      .toList()
-    ..sort((left, right) => right.updatedAt.compareTo(left.updatedAt));
+  List<ProcurementRecord> get allProcurementRecords =>
+      farmers.expand((item) => procurementFor(item.id)).toList()
+        ..sort((left, right) => right.updatedAt.compareTo(left.updatedAt));
 
   double get totalCashSupportValue => allSupportRecords.fold<double>(
         0,
@@ -185,17 +216,14 @@ class AppState extends ChangeNotifier {
   List<SupportRecord> get otpPendingSupport =>
       allSupportRecords.where((item) => item.isOtpPending).toList();
 
-  List<SupportRecord> pendingSupportFor(String farmerId) => supportFor(farmerId)
-      .where((item) => !item.finalized)
-      .toList();
+  List<SupportRecord> pendingSupportFor(String farmerId) =>
+      supportFor(farmerId).where((item) => !item.finalized).toList();
 
-  List<SupportRecord> unresolvedSupportFor(String farmerId) => supportFor(farmerId)
-      .where((item) => !item.isAcknowledged)
-      .toList();
+  List<SupportRecord> unresolvedSupportFor(String farmerId) =>
+      supportFor(farmerId).where((item) => !item.isAcknowledged).toList();
 
-  List<SupportRecord> finalizedSupportFor(String farmerId) => supportFor(farmerId)
-      .where((item) => item.finalized)
-      .toList();
+  List<SupportRecord> finalizedSupportFor(String farmerId) =>
+      supportFor(farmerId).where((item) => item.finalized).toList();
 
   List<FarmerProfile> searchFarmers(String query, {FarmerStatus? status}) {
     final normalized = query.trim().toLowerCase();
@@ -207,6 +235,109 @@ class AppState extends ChangeNotifier {
           farmer.phone.toLowerCase().contains(normalized);
       return matchesStatus && matchesQuery;
     }).toList();
+  }
+
+  String normalizePhoneNumber(String value) {
+    final trimmed = value.trim();
+    final keepPlus = trimmed.startsWith('+');
+    final digits = trimmed.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) {
+      return '';
+    }
+    return '${keepPlus ? '+' : ''}$digits';
+  }
+
+  bool isNormalizedPhoneAvailable(
+    String phone, {
+    String? excludingFarmerId,
+  }) {
+    final normalized = normalizePhoneNumber(phone);
+    if (normalized.isEmpty) {
+      return true;
+    }
+    return !farmers.any(
+      (item) =>
+          item.id != excludingFarmerId &&
+          normalizePhoneNumber(item.phone) == normalized,
+    );
+  }
+
+  String? validateNewFarmerDraft(NewFarmerDraft draft) {
+    if (draft.name.trim().isEmpty ||
+        draft.phone.trim().isEmpty ||
+        draft.location.trim().isEmpty ||
+        draft.crop.trim().isEmpty ||
+        draft.season.trim().isEmpty ||
+        draft.landDetails.trim().isEmpty) {
+      return 'All farmer details are required.';
+    }
+
+    if (normalizePhoneNumber(draft.phone).isEmpty) {
+      return 'Enter a valid phone number.';
+    }
+
+    if (!isNormalizedPhoneAvailable(draft.phone)) {
+      return 'A farmer with this phone number already exists.';
+    }
+
+    if (draft.totalLandAcres <= 0 ||
+        draft.nurseryLandAcres <= 0 ||
+        draft.mainLandAcres <= 0) {
+      return 'Land values must be greater than zero.';
+    }
+
+    final difference =
+        (draft.totalLandAcres - draft.nurseryLandAcres - draft.mainLandAcres)
+            .abs();
+    if (difference > 0.001) {
+      return 'Nursery and main land must add up to total land.';
+    }
+
+    return null;
+  }
+
+  FarmerProfile? addWillingFarmer(NewFarmerDraft draft) {
+    final sanitized = draft.copyWith(
+      name: draft.name.trim(),
+      phone: normalizePhoneNumber(draft.phone),
+      location: draft.location.trim(),
+      crop: draft.crop.trim(),
+      season: draft.season.trim(),
+      landDetails: draft.landDetails.trim(),
+    );
+
+    final validationError = validateNewFarmerDraft(sanitized);
+    if (validationError != null) {
+      return null;
+    }
+
+    final farmer = FarmerProfile(
+      id: _nextFarmerId(sanitized.name),
+      name: sanitized.name,
+      phone: sanitized.phone,
+      location: sanitized.location,
+      totalLandAcres: sanitized.totalLandAcres,
+      crop: sanitized.crop,
+      season: sanitized.season,
+      status: FarmerStatus.willing,
+      stage: FarmerStage.willing,
+      nurseryLandAcres: sanitized.nurseryLandAcres,
+      mainLandAcres: sanitized.mainLandAcres,
+      landDetails: sanitized.landDetails,
+      supportPreview: defaultSupportPreview(),
+    );
+
+    repository.saveFarmer(farmer);
+    repository.saveActivities(
+      farmer.id,
+      buildCropPlanActivities(
+        farmerId: farmer.id,
+        stage: farmer.stage,
+        today: today,
+      ),
+    );
+    notifyListeners();
+    return farmer;
   }
 
   void beginSignIn(String phoneNumber) {
@@ -257,14 +388,16 @@ class AppState extends ChangeNotifier {
   }
 
   int _priorityScore(FarmerProfile farmer) {
-    if (settlementPreviewFor(farmer.id).status == SettlementStatus.pendingReconciliation &&
+    if (settlementPreviewFor(farmer.id).status ==
+            SettlementStatus.pendingReconciliation &&
         canCompleteSettlement(farmer.id)) {
       return 0;
     }
     if (supportFor(farmer.id).any((item) => item.isOtpPending)) {
       return 1;
     }
-    if (procurementFor(farmer.id).any((item) => !item.submitted && item.incompleteSteps.isNotEmpty)) {
+    if (procurementFor(farmer.id)
+        .any((item) => !item.submitted && item.incompleteSteps.isNotEmpty)) {
       return 2;
     }
     if (_hasHarvestScheduledToday(farmer)) {
@@ -297,7 +430,8 @@ class AppState extends ChangeNotifier {
         .whereType<TaskItem>()
         .toList();
     tasks.sort((left, right) {
-      final priorityCompare = left.priority.index.compareTo(right.priority.index);
+      final priorityCompare =
+          left.priority.index.compareTo(right.priority.index);
       if (priorityCompare != 0) {
         return priorityCompare;
       }
@@ -455,7 +589,9 @@ class AppState extends ChangeNotifier {
         FarmerTimelineEntry(
           id: item.id,
           date: item.updatedAt,
-          title: item.submitted ? 'Procurement submitted' : 'Procurement in progress',
+          title: item.submitted
+              ? 'Procurement submitted'
+              : 'Procurement in progress',
           detail: item.submitted
               ? 'Receipt ${item.receiptNumber ?? 'pending'} is ready for reconciliation.'
               : '${item.incompleteSteps.length} procurement steps still need capture.',
@@ -520,8 +656,7 @@ class AppState extends ChangeNotifier {
         stepIndex: farmerId == null ? 0 : 1,
         farmerId: farmerId,
         landDetails: farmer?.landDetails ?? '',
-        cropContext:
-            farmer == null ? '' : '${farmer.crop} / ${farmer.season}',
+        cropContext: farmer == null ? '' : '${farmer.crop} / ${farmer.season}',
         disbursementDate: today,
       );
     }
@@ -568,7 +703,8 @@ class AppState extends ChangeNotifier {
     final existing = activeSupportRecord;
     final code = existing?.confirmationCode ?? _generateCode();
     final record = SupportRecord(
-      id: existing?.id ?? '${draft.type.name}_${draft.farmerId}_${now.microsecondsSinceEpoch}',
+      id: existing?.id ??
+          '${draft.type.name}_${draft.farmerId}_${now.microsecondsSinceEpoch}',
       type: draft.type,
       farmerId: farmer.id,
       farmerName: farmer.name,
@@ -694,7 +830,8 @@ class AppState extends ChangeNotifier {
   ) {
     final values = activitiesFor(farmerId)
         .map(
-          (item) => item.id == activityId ? item.copyWith(status: status) : item,
+          (item) =>
+              item.id == activityId ? item.copyWith(status: status) : item,
         )
         .toList();
     repository.saveActivities(farmerId, values);
@@ -706,7 +843,8 @@ class AppState extends ChangeNotifier {
   List<DateTime> harvestDateOptionsFor(String farmerId) {
     final dates = activitiesFor(farmerId)
         .where((item) => item.isHarvestWindow)
-        .map((item) => DateTime(item.plannedDate.year, item.plannedDate.month, item.plannedDate.day))
+        .map((item) => DateTime(item.plannedDate.year, item.plannedDate.month,
+            item.plannedDate.day))
         .toSet()
         .toList()
       ..sort();
@@ -722,9 +860,8 @@ class AppState extends ChangeNotifier {
     if (recordId != null) {
       record = repository.procurementById(recordId);
     } else {
-      final existing = procurementFor(farmerId)
-          .where((item) => !item.submitted)
-          .toList();
+      final existing =
+          procurementFor(farmerId).where((item) => !item.submitted).toList();
       if (existing.isNotEmpty) {
         record = existing.first;
       }
@@ -742,7 +879,8 @@ class AppState extends ChangeNotifier {
         createdAt: _timestamp(),
         updatedAt: _timestamp(),
         harvestDateOptions: harvestDates,
-        selectedHarvestDate: harvestDates.isNotEmpty ? harvestDates.first : null,
+        selectedHarvestDate:
+            harvestDates.isNotEmpty ? harvestDates.first : null,
       );
       repository.saveProcurement(record);
     } else {
@@ -760,8 +898,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  ProcurementRecord? get activeProcurementRecord =>
-      activeProcurementId == null ? null : repository.procurementById(activeProcurementId!);
+  ProcurementRecord? get activeProcurementRecord => activeProcurementId == null
+      ? null
+      : repository.procurementById(activeProcurementId!);
 
   int _resumeProcurementStep(ProcurementRecord record) {
     if (record.incompleteSteps.isEmpty) {
@@ -807,11 +946,10 @@ class AppState extends ChangeNotifier {
 
   bool canCompleteSettlement(String farmerId) {
     final supportRecords = supportFor(farmerId);
-    final hasAcknowledgedSupport =
-        supportRecords.isNotEmpty &&
-            supportRecords.every((item) => item.isAcknowledged);
-    final hasProcurement =
-        procurementFor(farmerId).any((item) => item.submitted && item.receiptGenerated);
+    final hasAcknowledgedSupport = supportRecords.isNotEmpty &&
+        supportRecords.every((item) => item.isAcknowledged);
+    final hasProcurement = procurementFor(farmerId)
+        .any((item) => item.submitted && item.receiptGenerated);
     return hasAcknowledgedSupport && hasProcurement;
   }
 
@@ -828,8 +966,10 @@ class AppState extends ChangeNotifier {
           : notes,
     );
     repository.saveSettlement(completed);
-    for (final item in supportFor(farmerId).where((item) => item.isAcknowledged)) {
-      repository.saveSupport(item.copyWith(finalized: true, updatedAt: _timestamp()));
+    for (final item
+        in supportFor(farmerId).where((item) => item.isAcknowledged)) {
+      repository
+          .saveSupport(item.copyWith(finalized: true, updatedAt: _timestamp()));
     }
     _reconcileFarmer(farmerId);
     notifyListeners();
@@ -855,9 +995,7 @@ class AppState extends ChangeNotifier {
                 !_isAfterToday(item.plannedDate)),
       );
       final growthStarted = activities.any(
-        (item) =>
-            item.type == CropActivityType.transplanting &&
-            item.completed,
+        (item) => item.type == CropActivityType.transplanting && item.completed,
       );
       final nurseryStarted = activities.any(
         (item) =>
@@ -897,6 +1035,22 @@ class AppState extends ChangeNotifier {
     final seed = _timestamp().millisecond + _timestamp().second * 10;
     final code = 1000 + (seed % 9000);
     return '$code';
+  }
+
+  String _nextFarmerId(String name) {
+    final words = name
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    final base = words.isEmpty ? 'farmer' : words;
+    var candidate = base;
+    var suffix = 2;
+    while (farmers.any((item) => item.id == candidate)) {
+      candidate = '$base-$suffix';
+      suffix += 1;
+    }
+    return candidate;
   }
 
   DateTime _timestamp() => DateTime.now();
@@ -993,7 +1147,8 @@ class AppState extends ChangeNotifier {
       );
     }
 
-    final farmer = misaFarmerId == null ? topPriorityFarmer : farmerById(misaFarmerId!);
+    final farmer =
+        misaFarmerId == null ? topPriorityFarmer : farmerById(misaFarmerId!);
     final recommendation = _buildRecommendation(prompt, farmer);
     return MisaMessage(
       id: 'misa_reply_${now.microsecondsSinceEpoch}',
@@ -1010,7 +1165,8 @@ class AppState extends ChangeNotifier {
     final lower = prompt.toLowerCase();
     final pendingSupport = supportFor(farmer.id).firstWhere(
       (item) => !item.isAcknowledged,
-      orElse: () => latestSupport(farmer.id, SupportType.cash) ??
+      orElse: () =>
+          latestSupport(farmer.id, SupportType.cash) ??
           latestSupport(farmer.id, SupportType.kind) ??
           SupportRecord(
             id: 'temp',
@@ -1029,9 +1185,8 @@ class AppState extends ChangeNotifier {
     if (lower.contains('otp') || lower.contains('support')) {
       final route =
           '/support/flow/${pendingSupport.type.name}?farmerId=${farmer.id}${pendingSupport.id == 'temp' ? '' : '&recordId=${pendingSupport.id}'}';
-      final title = pendingSupport.id == 'temp'
-          ? 'Start support'
-          : 'Resume support';
+      final title =
+          pendingSupport.id == 'temp' ? 'Start support' : 'Resume support';
       final message = pendingSupport.id == 'temp'
           ? '${farmer.name} does not have an active disbursement record yet. Start ${pendingSupport.type.shortLabel.toLowerCase()} support and capture the activation details.'
           : '${farmer.name} has ${pendingSupport.type.shortLabel.toLowerCase()} support at ${pendingSupport.statusLabel.toLowerCase()} status. Continue from the pending step and close OTP acknowledgement.';

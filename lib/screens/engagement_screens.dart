@@ -15,7 +15,8 @@ import '../widgets/common.dart';
 enum FarmerDirectoryTab { willing, booked, all }
 
 class EngagementScreen extends StatefulWidget {
-  const EngagementScreen({super.key, this.initialTab = FarmerDirectoryTab.willing});
+  const EngagementScreen(
+      {super.key, this.initialTab = FarmerDirectoryTab.willing});
 
   final FarmerDirectoryTab initialTab;
 
@@ -57,6 +58,20 @@ class _EngagementScreenState extends State<EngagementScreen> {
             onChanged: (value) => setState(() {
               _query = value;
             }),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const Key('add_willing_farmer_button'),
+              style: filledButtonStyle(),
+              onPressed: () => context.go('/engage/add'),
+              icon: const Icon(Icons.person_add_alt_1_outlined),
+              label: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 14),
+                child: Text('Add Willing Farmer'),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           SingleChildScrollView(
@@ -109,11 +124,275 @@ class _EngagementScreenState extends State<EngagementScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: FarmerListCard(
                   farmer: farmer,
-                  onTap: () => context.go('/engage/farmer/${farmer.id}?tab=profile'),
+                  onTap: () =>
+                      context.go('/engage/farmer/${farmer.id}?tab=profile'),
                 ),
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class AddWillingFarmerScreen extends StatefulWidget {
+  const AddWillingFarmerScreen({super.key});
+
+  @override
+  State<AddWillingFarmerScreen> createState() => _AddWillingFarmerScreenState();
+}
+
+class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _cropController = TextEditingController();
+  final _seasonController = TextEditingController();
+  final _landDetailsController = TextEditingController();
+  final _totalLandController = TextEditingController();
+  final _nurseryLandController = TextEditingController();
+  final _mainLandController = TextEditingController();
+
+  bool _defaultsApplied = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_defaultsApplied) {
+      return;
+    }
+    _seasonController.text = context.read<AppState>().currentSeason;
+    _defaultsApplied = true;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _locationController.dispose();
+    _cropController.dispose();
+    _seasonController.dispose();
+    _landDetailsController.dispose();
+    _totalLandController.dispose();
+    _nurseryLandController.dispose();
+    _mainLandController.dispose();
+    super.dispose();
+  }
+
+  double? _parseLandValue(String value) => double.tryParse(value.trim());
+
+  String? _validateRequired(String? value, String label) {
+    if (value == null || value.trim().isEmpty) {
+      return '$label is required.';
+    }
+    return null;
+  }
+
+  String? _validatePhone(AppState appState, String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Phone number is required.';
+    }
+    if (appState.normalizePhoneNumber(value).isEmpty) {
+      return 'Enter a valid phone number.';
+    }
+    if (!appState.isNormalizedPhoneAvailable(value)) {
+      return 'A farmer with this phone number already exists.';
+    }
+    return null;
+  }
+
+  String? _validatePositiveLand(String? value, String label) {
+    final parsed = _parseLandValue(value ?? '');
+    if (parsed == null) {
+      return 'Enter $label in acres.';
+    }
+    if (parsed <= 0) {
+      return '$label must be greater than zero.';
+    }
+    return null;
+  }
+
+  String? _validateSplitTotal() {
+    final total = _parseLandValue(_totalLandController.text);
+    final nursery = _parseLandValue(_nurseryLandController.text);
+    final main = _parseLandValue(_mainLandController.text);
+    if (total == null || nursery == null || main == null) {
+      return null;
+    }
+    final difference = (total - nursery - main).abs();
+    if (difference > 0.001) {
+      return 'Nursery land and main land must add up to total land.';
+    }
+    return null;
+  }
+
+  void _submit(AppState appState) {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final draft = NewFarmerDraft(
+      name: _nameController.text,
+      phone: _phoneController.text,
+      location: _locationController.text,
+      crop: _cropController.text,
+      season: _seasonController.text,
+      landDetails: _landDetailsController.text,
+      totalLandAcres: _parseLandValue(_totalLandController.text)!,
+      nurseryLandAcres: _parseLandValue(_nurseryLandController.text)!,
+      mainLandAcres: _parseLandValue(_mainLandController.text)!,
+    );
+
+    final farmer = appState.addWillingFarmer(draft);
+    if (farmer == null) {
+      showMockSnackBar(context, 'Unable to save farmer details.');
+      return;
+    }
+
+    showMockSnackBar(context, 'Willing farmer added.');
+    context.go('/engage/farmer/${farmer.id}?tab=profile');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+
+    return PageScaffold(
+      title: 'Add Willing Farmer',
+      showBack: true,
+      description: 'Capture the farmer details for onboarding.',
+      onBack: () => context.go('/engage?tab=willing'),
+      footer: SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          key: const Key('save_new_farmer_button'),
+          style: filledButtonStyle(),
+          onPressed: () => _submit(appState),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Text('Save Farmer'),
+          ),
+        ),
+      ),
+      child: Form(
+        key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Basic Details',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            SectionCard(
+              child: Column(
+                children: [
+                  TextFormField(
+                    key: const Key('new_farmer_name_field'),
+                    controller: _nameController,
+                    decoration: const InputDecoration(labelText: 'Full Name'),
+                    validator: (value) => _validateRequired(value, 'Full name'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_phone_field'),
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration:
+                        const InputDecoration(labelText: 'Mobile Number'),
+                    validator: (value) => _validatePhone(appState, value),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_location_field'),
+                    controller: _locationController,
+                    decoration: const InputDecoration(labelText: 'Location'),
+                    validator: (value) => _validateRequired(value, 'Location'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_crop_field'),
+                    controller: _cropController,
+                    decoration: const InputDecoration(labelText: 'Crop'),
+                    validator: (value) => _validateRequired(value, 'Crop'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_season_field'),
+                    controller: _seasonController,
+                    decoration: const InputDecoration(labelText: 'Season'),
+                    validator: (value) => _validateRequired(value, 'Season'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_land_details_field'),
+                    controller: _landDetailsController,
+                    maxLines: 3,
+                    decoration:
+                        const InputDecoration(labelText: 'Land Details'),
+                    validator: (value) =>
+                        _validateRequired(value, 'Land details'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Land Split',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            SectionCard(
+              child: Column(
+                children: [
+                  TextFormField(
+                    key: const Key('new_farmer_total_land_field'),
+                    controller: _totalLandController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration:
+                        const InputDecoration(labelText: 'Total Land (acres)'),
+                    onChanged: (_) => setState(() {}),
+                    validator: (value) =>
+                        _validatePositiveLand(value, 'Total land') ??
+                        _validateSplitTotal(),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_nursery_land_field'),
+                    controller: _nurseryLandController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                        labelText: 'Nursery Land (acres)'),
+                    onChanged: (_) => setState(() {}),
+                    validator: (value) =>
+                        _validatePositiveLand(value, 'Nursery land') ??
+                        _validateSplitTotal(),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_main_land_field'),
+                    controller: _mainLandController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration:
+                        const InputDecoration(labelText: 'Main Land (acres)'),
+                    onChanged: (_) => setState(() {}),
+                    validator: (value) =>
+                        _validatePositiveLand(value, 'Main land') ??
+                        _validateSplitTotal(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -184,7 +463,9 @@ class FarmerProfileScreen extends StatelessWidget {
                         if (context.mounted) {
                           showMockSnackBar(
                             context,
-                            success ? 'Dialer opened.' : 'Unable to open dialer.',
+                            success
+                                ? 'Dialer opened.'
+                                : 'Unable to open dialer.',
                           );
                         }
                       },
@@ -201,7 +482,9 @@ class FarmerProfileScreen extends StatelessWidget {
                         if (context.mounted) {
                           showMockSnackBar(
                             context,
-                            success ? 'Messaging app opened.' : 'Unable to open messaging app.',
+                            success
+                                ? 'Messaging app opened.'
+                                : 'Unable to open messaging app.',
                           );
                         }
                       },
@@ -210,11 +493,14 @@ class FarmerProfileScreen extends StatelessWidget {
                     ),
                     OutlinedButton.icon(
                       onPressed: () async {
-                        final success = await appState.shareFarmerSummary(farmer.id);
+                        final success =
+                            await appState.shareFarmerSummary(farmer.id);
                         if (context.mounted) {
                           showMockSnackBar(
                             context,
-                            success ? 'Summary shared.' : 'Unable to share summary.',
+                            success
+                                ? 'Summary shared.'
+                                : 'Unable to share summary.',
                           );
                         }
                       },
@@ -234,7 +520,8 @@ class FarmerProfileScreen extends StatelessWidget {
                   child: _DirectoryTabChip(
                     label: 'Farmer Profile',
                     selected: !isCultivationTab,
-                    onTap: () => context.go('/engage/farmer/$farmerId?tab=profile'),
+                    onTap: () =>
+                        context.go('/engage/farmer/$farmerId?tab=profile'),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -242,7 +529,8 @@ class FarmerProfileScreen extends StatelessWidget {
                   child: _DirectoryTabChip(
                     label: 'Cultivation',
                     selected: isCultivationTab,
-                    onTap: () => context.go('/engage/farmer/$farmerId?tab=cultivation'),
+                    onTap: () =>
+                        context.go('/engage/farmer/$farmerId?tab=cultivation'),
                   ),
                 ),
               ],
@@ -551,7 +839,8 @@ class CultivationTab extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () => context.go('/crop-plan?farmerId=${farmer.id}'),
+                  onPressed: () =>
+                      context.go('/crop-plan?farmerId=${farmer.id}'),
                   child: const Text('Open full crop plan'),
                 ),
               ),
@@ -619,12 +908,14 @@ class FarmerListCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 StatusPill(
-                  label: appState.farmerTrackerSupportLabel(farmer.id, SupportType.cash),
+                  label: appState.farmerTrackerSupportLabel(
+                      farmer.id, SupportType.cash),
                   background: AppColors.brandBlueLight,
                   foreground: AppColors.brandBlue,
                 ),
                 StatusPill(
-                  label: appState.farmerTrackerSupportLabel(farmer.id, SupportType.kind),
+                  label: appState.farmerTrackerSupportLabel(
+                      farmer.id, SupportType.kind),
                   background: AppColors.brandGreenLight,
                   foreground: AppColors.brandGreenDark,
                 ),
@@ -696,8 +987,9 @@ class StageProgressBar extends StatelessWidget {
                     Expanded(
                       child: Container(
                         height: 2,
-                        color:
-                            isActive ? AppColors.brandGreen : AppColors.cardBorder,
+                        color: isActive
+                            ? AppColors.brandGreen
+                            : AppColors.cardBorder,
                       ),
                     ),
                   Container(
@@ -716,7 +1008,8 @@ class StageProgressBar extends StatelessWidget {
                     child: Text(
                       '${index + 1}',
                       style: TextStyle(
-                        color: isActive ? Colors.white : AppColors.textSecondary,
+                        color:
+                            isActive ? Colors.white : AppColors.textSecondary,
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
                       ),
@@ -885,7 +1178,8 @@ class _ProcurementRecordTile extends StatelessWidget {
             const SizedBox(height: 8),
             InfoPair(
               label: 'Final Quantity',
-              value: '${(record.finalWeighingQtyKg ?? 0).toStringAsFixed(0)} kg',
+              value:
+                  '${(record.finalWeighingQtyKg ?? 0).toStringAsFixed(0)} kg',
             ),
             const SizedBox(height: 8),
             InfoPair(label: 'Total', value: currency(record.totalAmount)),
@@ -960,13 +1254,15 @@ class _StageActionPanel extends StatelessWidget {
         FilledButton(
           key: const Key('start_cash_advance_button'),
           style: filledButtonStyle(),
-          onPressed: () => context.go('/support/flow/cash?farmerId=${farmer.id}'),
+          onPressed: () =>
+              context.go('/support/flow/cash?farmerId=${farmer.id}'),
           child: const Text('Proceed To Booking'),
         ),
       );
       buttons.add(
         OutlinedButton(
-          onPressed: () => context.go('/support/flow/cash?farmerId=${farmer.id}'),
+          onPressed: () =>
+              context.go('/support/flow/cash?farmerId=${farmer.id}'),
           child: const Text('Start Cash Advance'),
         ),
       );
@@ -974,7 +1270,8 @@ class _StageActionPanel extends StatelessWidget {
       buttons.add(
         FilledButton(
           style: filledButtonStyle(),
-          onPressed: () => context.go('/support/flow/kind?farmerId=${farmer.id}'),
+          onPressed: () =>
+              context.go('/support/flow/kind?farmerId=${farmer.id}'),
           child: const Text('Give Kind Support'),
         ),
       );
@@ -986,7 +1283,8 @@ class _StageActionPanel extends StatelessWidget {
       );
       buttons.add(
         OutlinedButton(
-          onPressed: () => context.go('/harvest/procurement?farmerId=${farmer.id}'),
+          onPressed: () =>
+              context.go('/harvest/procurement?farmerId=${farmer.id}'),
           child: const Text('Start Procurement'),
         ),
       );
@@ -998,7 +1296,9 @@ class _StageActionPanel extends StatelessWidget {
               final success = appState.completeSettlement(farmer.id);
               showMockSnackBar(
                 context,
-                success ? 'Settlement completed.' : 'Settlement is not ready yet.',
+                success
+                    ? 'Settlement completed.'
+                    : 'Settlement is not ready yet.',
               );
             },
             child: const Text('Complete Settlement'),

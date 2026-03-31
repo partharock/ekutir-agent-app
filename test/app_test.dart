@@ -10,8 +10,10 @@ import 'package:ekutir_agent_app/screens/home_screen.dart';
 import 'package:ekutir_agent_app/services/device_action_service.dart';
 import 'package:ekutir_agent_app/services/receipt_service.dart';
 import 'package:ekutir_agent_app/state/app_state.dart';
+import 'package:ekutir_agent_app/state/workflow_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeDeviceActionService implements DeviceActionService {
   int callCount = 0;
@@ -69,15 +71,37 @@ class FakeReceiptService implements ReceiptService {
 }
 
 AppState buildState({
+  WorkflowRepository? repository,
   FakeDeviceActionService? deviceActions,
   FakeReceiptService? receiptService,
 }) {
   final seedToday = DateTime(2026, 3, 28);
   return AppState.seeded(
+    repository: repository,
     today: seedToday,
     deviceActions: deviceActions ?? FakeDeviceActionService(),
     receiptService: receiptService ?? FakeReceiptService(),
   );
+}
+
+Future<AppState> buildPersistedState({
+  FakeDeviceActionService? deviceActions,
+  FakeReceiptService? receiptService,
+}) async {
+  final seedToday = DateTime(2026, 3, 28);
+  final repository = await PersistedWorkflowRepository.create(today: seedToday);
+  return buildState(
+    repository: repository,
+    deviceActions: deviceActions,
+    receiptService: receiptService,
+  );
+}
+
+Future<void> flushPersistedWrites(AppState state) async {
+  final repository = state.repository;
+  if (repository is PersistedWorkflowRepository) {
+    await repository.pendingWrites;
+  }
 }
 
 Future<void> pumpAuthenticatedApp(
@@ -136,7 +160,8 @@ void main() {
     expect(find.text('How can I help you today?'), findsOneWidget);
   });
 
-  test('willing farmer becomes booked only after cash support acknowledged', () {
+  test('willing farmer becomes booked only after cash support acknowledged',
+      () {
     final state = buildState();
 
     state.startSupportFlow(SupportType.cash, farmerId: 'anita-devi');
@@ -188,6 +213,93 @@ void main() {
     expect(state.farmerById('parul-begum').status, FarmerStatus.willing);
   });
 
+  test('agent can add a willing farmer with seeded activities and defaults',
+      () {
+    final state = buildState();
+
+    final farmer = state.addWillingFarmer(
+      const NewFarmerDraft(
+        name: 'Nina Das',
+        phone: '+91 9898989898',
+        location: 'Bhaluka',
+        crop: 'Rice',
+        season: 'Kharif 2026',
+        landDetails: 'Nursery beside canal and 8-acre main plot.',
+        totalLandAcres: 12,
+        nurseryLandAcres: 4,
+        mainLandAcres: 8,
+      ),
+    );
+
+    expect(farmer, isNotNull);
+    expect(farmer!.status, FarmerStatus.willing);
+    expect(farmer.stage, FarmerStage.willing);
+    expect(state.farmerById(farmer.id).phone, '+919898989898');
+    expect(state.activitiesFor(farmer.id), isNotEmpty);
+    expect(state.supportFor(farmer.id), isEmpty);
+    expect(
+      state.farmerById(farmer.id).supportPreview,
+      equals(defaultSupportPreview()),
+    );
+  });
+
+  test(
+      'add willing farmer rejects duplicate phone numbers and invalid land split',
+      () {
+    final state = buildState();
+
+    expect(
+      state.validateNewFarmerDraft(
+        const NewFarmerDraft(
+          name: 'Duplicate Farmer',
+          phone: '+91 9876543210',
+          location: 'Karimpur',
+          crop: 'Rice',
+          season: 'Kharif 2026',
+          landDetails: 'Duplicate land details.',
+          totalLandAcres: 10,
+          nurseryLandAcres: 4,
+          mainLandAcres: 6,
+        ),
+      ),
+      'A farmer with this phone number already exists.',
+    );
+
+    expect(
+      state.validateNewFarmerDraft(
+        const NewFarmerDraft(
+          name: 'Mismatch Farmer',
+          phone: '+91 9000000001',
+          location: 'Karimpur',
+          crop: 'Rice',
+          season: 'Kharif 2026',
+          landDetails: 'Mismatch land details.',
+          totalLandAcres: 10,
+          nurseryLandAcres: 3,
+          mainLandAcres: 6,
+        ),
+      ),
+      'Nursery and main land must add up to total land.',
+    );
+
+    expect(
+      state.addWillingFarmer(
+        const NewFarmerDraft(
+          name: 'Blocked Farmer',
+          phone: '+91 9000000002',
+          location: 'Karimpur',
+          crop: 'Rice',
+          season: 'Kharif 2026',
+          landDetails: 'Blocked land details.',
+          totalLandAcres: 10,
+          nurseryLandAcres: 2,
+          mainLandAcres: 6,
+        ),
+      ),
+      isNull,
+    );
+  });
+
   test('crop activity updates promote farmer stage', () {
     final state = buildState();
 
@@ -224,7 +336,9 @@ void main() {
     expect(state.farmerById('ravi-kumar').stage, FarmerStage.harvest);
   });
 
-  test('harvest dates come only from crop plan and procurement does not settle automatically', () {
+  test(
+      'harvest dates come only from crop plan and procurement does not settle automatically',
+      () {
     final state = buildState();
     final harvestDates = state.harvestDateOptionsFor('amit-kumar');
 
@@ -252,7 +366,9 @@ void main() {
     );
   });
 
-  test('home priorities are farmer-specific and deep-link to exact next actions', () {
+  test(
+      'home priorities are farmer-specific and deep-link to exact next actions',
+      () {
     final state = buildState();
     final tasks = state.homeTasks;
 
@@ -317,7 +433,8 @@ void main() {
     expect(state.finalizedSupportFor('amit-kumar'), isNotEmpty);
   });
 
-  test('settlement stays blocked while any support record remains unresolved', () {
+  test('settlement stays blocked while any support record remains unresolved',
+      () {
     final state = buildState();
 
     state.startProcurementFlow('ravi-kumar');
@@ -369,7 +486,9 @@ void main() {
     expect(state.canCompleteSettlement('ravi-kumar'), isTrue);
   });
 
-  testWidgets('engage willing farmer routes to cash support instead of direct booking', (
+  testWidgets(
+      'engage willing farmer routes to cash support instead of direct booking',
+      (
     tester,
   ) async {
     final appState = buildState();
@@ -381,7 +500,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('start_cash_advance_button')), findsOneWidget);
-    await tester.ensureVisible(find.byKey(const Key('start_cash_advance_button')));
+    await tester
+        .ensureVisible(find.byKey(const Key('start_cash_advance_button')));
     await tester.tap(find.byKey(const Key('start_cash_advance_button')));
     await tester.pumpAndSettle();
 
@@ -389,7 +509,8 @@ void main() {
     expect(appState.farmerById('anita-devi').status, FarmerStatus.willing);
   });
 
-  testWidgets('cash support flow enforces OTP and books farmer on acknowledge', (
+  testWidgets('cash support flow enforces OTP and books farmer on acknowledge',
+      (
     tester,
   ) async {
     final appState = buildState();
@@ -422,7 +543,8 @@ void main() {
     expect(appState.farmerById('anita-devi').status, FarmerStatus.booked);
   });
 
-  testWidgets('support screen shows post-disbursement summary and OTP follow-up', (
+  testWidgets(
+      'support screen shows post-disbursement summary and OTP follow-up', (
     tester,
   ) async {
     final appState = buildState();
@@ -436,7 +558,8 @@ void main() {
     expect(find.textContaining('Total Cash Disbursed'), findsWidgets);
   });
 
-  testWidgets('farmer profile separates pending support from finalized history', (
+  testWidgets('farmer profile separates pending support from finalized history',
+      (
     tester,
   ) async {
     final appState = buildState();
@@ -469,7 +592,9 @@ void main() {
     expect(find.text('Finalized'), findsWidgets);
   });
 
-  testWidgets('MISA general and farmer-specific flows produce actionable recommendations', (
+  testWidgets(
+      'MISA general and farmer-specific flows produce actionable recommendations',
+      (
     tester,
   ) async {
     final appState = buildState();
@@ -534,6 +659,116 @@ void main() {
     expect(printed, isTrue);
     expect(fakeReceipt.shareCount, 1);
     expect(fakeReceipt.printCount, 1);
+  });
+
+  test('persisted repository restores full workflow snapshot', () async {
+    SharedPreferences.setMockInitialValues({});
+
+    final state = await buildPersistedState();
+    final farmer = state.addWillingFarmer(
+      const NewFarmerDraft(
+        name: 'Rina Paul',
+        phone: '+91 9000000100',
+        location: 'Trishal',
+        crop: 'Tomato',
+        season: 'Summer 2026',
+        landDetails: '3-acre nursery and 7-acre main field.',
+        totalLandAcres: 10,
+        nurseryLandAcres: 3,
+        mainLandAcres: 7,
+      ),
+    );
+    expect(farmer, isNotNull);
+
+    expect(
+      state.updateCropActivityStatus(
+        farmer!.id,
+        '${farmer.id}_n1',
+        CropActivityStatus.inProgress,
+      ),
+      isTrue,
+    );
+    await flushPersistedWrites(state);
+
+    final reloadedState = await buildPersistedState();
+
+    expect(reloadedState.farmerById(farmer.id).name, 'Rina Paul');
+    expect(
+      reloadedState.activitiesFor(farmer.id).first.status,
+      CropActivityStatus.inProgress,
+    );
+    expect(reloadedState.supportFor('ravi-kumar'), isNotEmpty);
+    expect(reloadedState.procurementFor('suresh-patel'), isNotEmpty);
+    expect(
+      reloadedState.settlementPreviewFor('suresh-patel').status,
+      SettlementStatus.completed,
+    );
+  });
+
+  testWidgets('engage add willing farmer persists after app rebuild', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    final appState = await buildPersistedState();
+    await pumpAuthenticatedApp(tester, appState: appState);
+
+    await tester.tap(find.text('Engage').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add_willing_farmer_button')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_name_field')),
+      'Nandita Roy',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_phone_field')),
+      '+91 9000000200',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_location_field')),
+      'Karimpur',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_crop_field')),
+      'Rice',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_season_field')),
+      'Kharif 2026',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_land_details_field')),
+      '2-acre nursery and 8-acre main plot.',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_total_land_field')),
+      '10',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_nursery_land_field')),
+      '2',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_main_land_field')),
+      '8',
+    );
+    await tester.tap(find.byKey(const Key('save_new_farmer_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nandita Roy'), findsWidgets);
+    await flushPersistedWrites(appState);
+
+    final reloadedState = await buildPersistedState();
+    await pumpAuthenticatedApp(tester, appState: reloadedState);
+
+    await tester.tap(find.text('Engage').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All Farmers'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nandita Roy'), findsWidgets);
   });
 
   testWidgets(
