@@ -186,7 +186,7 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
         children: [
           ProcurementStepper(currentStep: appState.procurementStepIndex),
           const SizedBox(height: 18),
-          Text('Farmer Details', style: Theme.of(context).textTheme.titleLarge),
+          Text('Farmer Details'.tr, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
           FarmerDetailSummary(farmer: farmer),
           const SizedBox(height: 18),
@@ -510,7 +510,7 @@ class _HarvestingStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Harvesting Details', style: Theme.of(context).textTheme.titleMedium),
+          Text('Harvesting Details'.tr, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 14),
           DropdownButtonFormField<DateTime>(
             initialValue: record.selectedHarvestDate,
@@ -565,7 +565,7 @@ class _PackagingStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Packaging Details', style: Theme.of(context).textTheme.titleMedium),
+          Text('Packaging Details'.tr, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 14),
           DatePickerField(
             label: 'Packaging Date'.tr,
@@ -601,7 +601,7 @@ class _WeighingStep extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Weighing Details', style: Theme.of(context).textTheme.titleMedium),
+              Text('Weighing Details'.tr, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 14),
               DatePickerField(
                 label: 'Weighing Date'.tr,
@@ -633,7 +633,7 @@ class _WeighingStep extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Quantity Comparison', style: Theme.of(context).textTheme.titleMedium),
+              Text('Quantity Comparison'.tr, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               InfoPair(
                 label: 'Harvested Qty'.tr,
@@ -667,7 +667,7 @@ class _PriceStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Price Breakdown', style: Theme.of(context).textTheme.titleMedium),
+          Text('Price Breakdown'.tr, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 14),
           TextField(
             controller: parent._rateController,
@@ -703,7 +703,7 @@ class _ReceiptStep extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Receipt Preview', style: Theme.of(context).textTheme.titleMedium),
+              Text('Receipt Preview'.tr, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 14),
               InfoPair(label: 'Receipt No'.tr, value: record.receiptNumber ?? 'Pending'),
               const SizedBox(height: 8),
@@ -789,7 +789,7 @@ class _TransportStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Transport Details', style: Theme.of(context).textTheme.titleMedium),
+          Text('Transport Details'.tr, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 14),
           DatePickerField(
             label: 'Transport Date'.tr,

@@ -43,7 +43,7 @@ class SupportScreen extends StatelessWidget {
             onTap: () => context.go('/support/flow/kind'),
           ),
           const SizedBox(height: 24),
-          Text('Support Rules', style: Theme.of(context).textTheme.titleLarge),
+          Text('Support Rules'.tr, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 10),
           const _BulletText(
             'A willing farmer becomes booked only after cash support reaches Acknowledged.',
@@ -311,7 +311,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
               ),
             ),
           ] else if (draft.stepIndex == 1 && selectedFarmer != null) ...[
-            Text('Farmer Details', style: Theme.of(context).textTheme.titleLarge),
+            Text('Farmer Details'.tr, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             FarmerDetailSummary(farmer: selectedFarmer),
             const SizedBox(height: 18),
@@ -409,7 +409,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
               ),
             ),
           ] else if (selectedFarmer != null && activeRecord != null) ...[
-            Text('Farmer Details', style: Theme.of(context).textTheme.titleLarge),
+            Text('Farmer Details'.tr, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             FarmerDetailSummary(farmer: selectedFarmer),
             const SizedBox(height: 18),
