@@ -226,7 +226,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           context.go('/home');
                         } else {
                           setState(() {
-                            _error = 'Enter any valid 4 digit OTP to continue.';
+                            _error = 'Enter any valid 4 digit OTP to continue.'.tr;
                           });
                         }
                       },
@@ -239,7 +239,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     TextButton(
                       onPressed: () {
                         setState(() {
-                          _error = 'Mock OTP resent. Use any 4 digits.';
+                          _error = 'Mock OTP resent. Use any 4 digits.'.tr;
                         });
                       },
                       child: Text('Resend OTP'.tr),

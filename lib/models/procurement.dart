@@ -1,3 +1,4 @@
+import '../utils/translation_service.dart';
 import 'package:flutter/material.dart';
 
 enum ProcurementStep {
@@ -13,17 +14,17 @@ extension ProcurementStepX on ProcurementStep {
   String get label {
     switch (this) {
       case ProcurementStep.harvesting:
-        return 'Harvesting';
+        return 'Harvesting'.tr;
       case ProcurementStep.packaging:
-        return 'Packaging';
+        return 'Packaging'.tr;
       case ProcurementStep.weighing:
-        return 'Weighing';
+        return 'Weighing'.tr;
       case ProcurementStep.price:
-        return 'Price';
+        return 'Price'.tr;
       case ProcurementStep.receipt:
-        return 'Receipt';
+        return 'Receipt'.tr;
       case ProcurementStep.transport:
-        return 'Transport';
+        return 'Transport'.tr;
     }
   }
 }

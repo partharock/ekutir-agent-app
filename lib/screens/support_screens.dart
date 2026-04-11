@@ -214,10 +214,10 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
 
   String _stepDescription(int step) {
     if (step == 0) {
-      return 'Select a farmer to continue.';
+      return 'Select a farmer to continue.'.tr;
     }
     if (step == 1) {
-      return 'Capture support details before generating the confirmation code.';
+      return 'Capture support details before generating the confirmation code.'.tr;
     }
     if (widget.type == SupportType.cash) {
       switch (step) {

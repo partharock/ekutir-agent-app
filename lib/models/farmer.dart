@@ -1,3 +1,4 @@
+import '../utils/translation_service.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
@@ -18,9 +19,9 @@ extension FarmerStatusX on FarmerStatus {
   String get label {
     switch (this) {
       case FarmerStatus.willing:
-        return 'Willing';
+        return 'Willing'.tr;
       case FarmerStatus.booked:
-        return 'Booked';
+        return 'Booked'.tr;
     }
   }
 
@@ -47,19 +48,19 @@ extension FarmerStageX on FarmerStage {
   String get label {
     switch (this) {
       case FarmerStage.willing:
-        return 'Willing';
+        return 'Willing'.tr;
       case FarmerStage.booked:
-        return 'Booked';
+        return 'Booked'.tr;
       case FarmerStage.nursery:
-        return 'Nursery';
+        return 'Nursery'.tr;
       case FarmerStage.growth:
-        return 'Growth';
+        return 'Growth'.tr;
       case FarmerStage.harvest:
-        return 'Harvest';
+        return 'Harvest'.tr;
       case FarmerStage.procurement:
-        return 'Procurement';
+        return 'Procurement'.tr;
       case FarmerStage.settlementCompleted:
-        return 'Settlement Completed';
+        return 'Settlement Completed'.tr;
     }
   }
 }
@@ -104,19 +105,19 @@ Color stageForegroundColor(FarmerStage stage) {
 String stageHelperText(FarmerStage stage) {
   switch (stage) {
     case FarmerStage.willing:
-      return 'Proceed to cash support to activate the partnership.';
+      return 'Proceed to cash support to activate the partnership.'.tr;
     case FarmerStage.booked:
-      return 'Cash support has been acknowledged. Nursery preparation is next.';
+      return 'Cash support has been acknowledged. Nursery preparation is next.'.tr;
     case FarmerStage.nursery:
-      return 'Nursery activities are underway for this farmer.';
+      return 'Nursery activities are underway for this farmer.'.tr;
     case FarmerStage.growth:
-      return 'Growth monitoring and planned visits are active.';
+      return 'Growth monitoring and planned visits are active.'.tr;
     case FarmerStage.harvest:
-      return 'Harvest window is active. Procurement can be scheduled.';
+      return 'Harvest window is active. Procurement can be scheduled.'.tr;
     case FarmerStage.procurement:
-      return 'Harvesting and procurement records are in progress or complete.';
+      return 'Harvesting and procurement records are in progress or complete.'.tr;
     case FarmerStage.settlementCompleted:
-      return 'Reconciliation is complete for this crop cycle.';
+      return 'Reconciliation is complete for this crop cycle.'.tr;
   }
 }
 

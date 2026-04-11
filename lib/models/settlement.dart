@@ -1,10 +1,11 @@
+import '../utils/translation_service.dart';
 enum SettlementStatus { pendingReconciliation, completed }
 
 extension SettlementStatusX on SettlementStatus {
   String get label {
     switch (this) {
       case SettlementStatus.pendingReconciliation:
-        return 'Pending Reconciliation';
+        return 'Pending Reconciliation'.tr;
       case SettlementStatus.completed:
         return 'Completed';
     }

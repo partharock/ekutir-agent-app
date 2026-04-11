@@ -1,3 +1,4 @@
+import '../utils/translation_service.dart';
 enum CropActivityType {
   nurseryStart,
   transplanting,
@@ -13,11 +14,11 @@ extension CropActivityStatusX on CropActivityStatus {
   String get label {
     switch (this) {
       case CropActivityStatus.planned:
-        return 'Planned';
+        return 'Planned'.tr;
       case CropActivityStatus.inProgress:
-        return 'In Progress';
+        return 'In Progress'.tr;
       case CropActivityStatus.completed:
-        return 'Completed';
+        return 'Completed'.tr;
     }
   }
 }

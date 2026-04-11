@@ -195,13 +195,13 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
 
   String? _validatePhone(AppState appState, String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Phone number is required.';
+      return 'Phone number is required.'.tr;
     }
     if (appState.normalizePhoneNumber(value).isEmpty) {
-      return 'Enter a valid phone number.';
+      return 'Enter a valid phone number.'.tr;
     }
     if (!appState.isNormalizedPhoneAvailable(value)) {
-      return 'A farmer with this phone number already exists.';
+      return 'A farmer with this phone number already exists.'.tr;
     }
     return null;
   }
@@ -226,7 +226,7 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
     }
     final difference = (total - nursery - main).abs();
     if (difference > 0.001) {
-      return 'Nursery land and main land must add up to total land.';
+      return 'Nursery land and main land must add up to total land.'.tr;
     }
     return null;
   }

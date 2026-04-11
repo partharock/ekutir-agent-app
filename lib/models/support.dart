@@ -1,3 +1,4 @@
+import '../utils/translation_service.dart';
 import 'package:flutter/material.dart';
 
 enum SupportType { cash, kind }
@@ -23,11 +24,11 @@ extension CashSupportStageX on CashSupportStage {
       case CashSupportStage.booked:
         return 'Booked';
       case CashSupportStage.received:
-        return 'Received';
+        return 'Received'.tr;
       case CashSupportStage.paid:
-        return 'Paid';
+        return 'Paid'.tr;
       case CashSupportStage.acknowledged:
-        return 'Acknowledged';
+        return 'Acknowledged'.tr;
     }
   }
 }
@@ -36,9 +37,9 @@ extension KindSupportStageX on KindSupportStage {
   String get label {
     switch (this) {
       case KindSupportStage.given:
-        return 'Given';
+        return 'Given'.tr;
       case KindSupportStage.acknowledged:
-        return 'Acknowledged';
+        return 'Acknowledged'.tr;
     }
   }
 }

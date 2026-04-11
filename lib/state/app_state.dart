@@ -286,28 +286,28 @@ class AppState extends ChangeNotifier {
         draft.crop.trim().isEmpty ||
         draft.season.trim().isEmpty ||
         draft.landDetails.trim().isEmpty) {
-      return 'All farmer details are required.';
+      return 'All farmer details are required.'.tr;
     }
 
     if (normalizePhoneNumber(draft.phone).isEmpty) {
-      return 'Enter a valid phone number.';
+      return 'Enter a valid phone number.'.tr;
     }
 
     if (!isNormalizedPhoneAvailable(draft.phone)) {
-      return 'A farmer with this phone number already exists.';
+      return 'A farmer with this phone number already exists.'.tr;
     }
 
     if (draft.totalLandAcres <= 0 ||
         draft.nurseryLandAcres <= 0 ||
         draft.mainLandAcres <= 0) {
-      return 'Land values must be greater than zero.';
+      return 'Land values must be greater than zero.'.tr;
     }
 
     final difference =
         (draft.totalLandAcres - draft.nurseryLandAcres - draft.mainLandAcres)
             .abs();
     if (difference > 0.001) {
-      return 'Nursery and main land must add up to total land.';
+      return 'Nursery and main land must add up to total land.'.tr;
     }
 
     return null;
@@ -561,13 +561,13 @@ class AppState extends ChangeNotifier {
   String farmerTrackerProcurementLabel(String farmerId) {
     final item = latestProcurement(farmerId);
     if (item == null) {
-      return 'Procurement: Not started';
+      return 'Procurement: Not started'.tr;
     }
     if (item.submitted) {
-      return 'Procurement: Submitted';
+      return 'Procurement: Submitted'.tr;
     }
     if (item.incompleteSteps.isEmpty) {
-      return 'Procurement: Ready to submit';
+      return 'Procurement: Ready to submit'.tr;
     }
     return 'Procurement: ${item.incompleteSteps.length} steps pending';
   }
@@ -1505,7 +1505,7 @@ class AppState extends ChangeNotifier {
       final route =
           '/support/flow/${pendingSupport.type.name}?farmerId=${farmer.id}${pendingSupport.id == 'temp' ? '' : '&recordId=${pendingSupport.id}'}';
       final title =
-          pendingSupport.id == 'temp' ? 'Start support' : 'Resume support';
+          pendingSupport.id == 'temp' ? 'Start support'.tr : 'Resume support'.tr;
       final message = pendingSupport.id == 'temp'
           ? '${farmer.name} does not have an active disbursement record yet. Start ${pendingSupport.type.shortLabel.toLowerCase()} support and capture the activation details.'
           : '${farmer.name} has ${pendingSupport.type.shortLabel.toLowerCase()} support at ${pendingSupport.statusLabel.toLowerCase()} status. Continue from the pending step and close OTP acknowledgement.';
