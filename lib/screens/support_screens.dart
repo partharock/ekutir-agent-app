@@ -292,7 +292,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
               }),
             ),
             const SizedBox(height: 18),
-            Text('All Farmers', style: Theme.of(context).textTheme.titleLarge),
+            Text('All Farmers'.tr, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 14),
             ...farmers.map(
               (farmer) => Padding(
@@ -877,7 +877,7 @@ class _SupportSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Summary', style: Theme.of(context).textTheme.titleMedium),
+          Text('Summary'.tr, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           InfoPair(label: 'Farmer'.tr, value: record.farmerName),
           const SizedBox(height: 8),

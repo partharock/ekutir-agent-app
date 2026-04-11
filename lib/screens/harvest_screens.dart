@@ -39,7 +39,7 @@ class _HarvestHubScreenState extends State<HarvestHubScreen> {
             }),
           ),
           const SizedBox(height: 18),
-          Text('All Farmers', style: Theme.of(context).textTheme.titleLarge),
+          Text('All Farmers'.tr, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 14),
           ...farmers.map(
             (farmer) => Padding(

@@ -111,7 +111,7 @@ class _CropPlanScreenState extends State<CropPlanScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          Text('All Farmers', style: Theme.of(context).textTheme.titleLarge),
+          Text('All Farmers'.tr, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 14),
           if (farmers.isEmpty)
             EmptyStateCard(
@@ -222,7 +222,7 @@ class _FarmerCropPlanDetail extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Farmer Details', style: Theme.of(context).textTheme.titleLarge),
+          Text('Farmer Details'.tr, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
           SectionCard(
             child: Column(

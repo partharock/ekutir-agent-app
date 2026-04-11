@@ -220,7 +220,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                'Farmer-wise Tracking',
+                'Farmer-wise Tracking'.tr,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
