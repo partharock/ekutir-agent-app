@@ -3,11 +3,13 @@ import 'dart:typed_data';
 import 'package:ekutir_agent_app/main.dart';
 import 'package:ekutir_agent_app/models/crop_plan.dart';
 import 'package:ekutir_agent_app/models/farmer.dart';
+import 'package:ekutir_agent_app/models/misa.dart';
 import 'package:ekutir_agent_app/models/procurement.dart';
 import 'package:ekutir_agent_app/models/settlement.dart';
 import 'package:ekutir_agent_app/models/support.dart';
 import 'package:ekutir_agent_app/screens/home_screen.dart';
 import 'package:ekutir_agent_app/services/device_action_service.dart';
+import 'package:ekutir_agent_app/services/misa_service.dart';
 import 'package:ekutir_agent_app/services/plot_location_service.dart';
 import 'package:ekutir_agent_app/services/receipt_service.dart';
 import 'package:ekutir_agent_app/state/app_state.dart';
@@ -44,7 +46,8 @@ class FakeDeviceActionService implements DeviceActionService {
   }
 
   @override
-  Future<bool> openMapLocation(PlotLocation plotLocation, {String? label}) async {
+  Future<bool> openMapLocation(PlotLocation plotLocation,
+      {String? label}) async {
     openMapCount += 1;
     lastOpenedPlotLocation = plotLocation;
     lastMapLabel = label;
@@ -110,9 +113,58 @@ class FakeReceiptService implements ReceiptService {
   }
 }
 
+class FakeMisaService implements MisaService {
+  int requestCount = 0;
+
+  @override
+  Future<MisaAiReply> submit(MisaRequest request) async {
+    requestCount += 1;
+    final prompt = request.prompt.toLowerCase();
+    final focusFarmer =
+        request.context['focusFarmer'] as Map<String, dynamic>? ?? {};
+    final focusFarmerId = focusFarmer['id'] as String?;
+    final focusFarmerName = (focusFarmer['name'] as String?) ?? 'Farmer';
+
+    if (prompt.contains('attention')) {
+      return MisaAiReply(
+        message:
+            '$focusFarmerName needs attention first based on pending workflow work.',
+        recommendation: MisaRecommendation(
+          title: 'Open profile',
+          message:
+              'Review the farmer profile and continue the most urgent workflow.',
+          actionLabel: 'Open profile',
+          actionRoute:
+              '/engage/farmer/${focusFarmerId ?? 'ravi-kumar'}?tab=profile',
+          farmerId: focusFarmerId ?? 'ravi-kumar',
+        ),
+      );
+    }
+
+    if (prompt.contains('support')) {
+      return MisaAiReply(
+        message: 'There is pending support to close for this farmer.',
+        recommendation: MisaRecommendation(
+          title: 'Resume support',
+          message:
+              'Continue the pending support step and close OTP acknowledgement.',
+          actionLabel: 'Resume support',
+          actionRoute:
+              '/support/flow/cash?farmerId=${focusFarmerId ?? 'ravi-kumar'}',
+          farmerId: focusFarmerId ?? 'ravi-kumar',
+        ),
+      );
+    }
+
+    return const MisaAiReply(
+        message: 'I reviewed the latest workflow context.');
+  }
+}
+
 AppState buildState({
   WorkflowRepository? repository,
   FakeDeviceActionService? deviceActions,
+  MisaService? misaService,
   FakeReceiptService? receiptService,
 }) {
   final seedToday = DateTime(2026, 3, 28);
@@ -120,12 +172,14 @@ AppState buildState({
     repository: repository,
     today: seedToday,
     deviceActions: deviceActions ?? FakeDeviceActionService(),
+    misaService: misaService ?? FakeMisaService(),
     receiptService: receiptService ?? FakeReceiptService(),
   );
 }
 
 Future<AppState> buildPersistedState({
   FakeDeviceActionService? deviceActions,
+  MisaService? misaService,
   FakeReceiptService? receiptService,
 }) async {
   final seedToday = DateTime(2026, 3, 28);
@@ -133,6 +187,7 @@ Future<AppState> buildPersistedState({
   return buildState(
     repository: repository,
     deviceActions: deviceActions,
+    misaService: misaService,
     receiptService: receiptService,
   );
 }
@@ -770,7 +825,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Who needs attention today?'));
     await tester.pumpAndSettle();
-    expect(find.text('Open profile'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Open profile'), findsOneWidget);
 
     await tester.tap(find.text('Farmer-specific'));
     await tester.pumpAndSettle();
@@ -963,7 +1018,8 @@ void main() {
       find.byKey(const Key('new_farmer_location_field')),
       'Karimpur',
     );
-    await tester.ensureVisible(find.byKey(const Key('capture_plot_location_button')));
+    await tester
+        .ensureVisible(find.byKey(const Key('capture_plot_location_button')));
     await tester.tap(find.byKey(const Key('capture_plot_location_button')));
     await tester.pumpAndSettle();
 
@@ -1011,7 +1067,8 @@ void main() {
     expect(find.text('Village road plot, Karimpur'), findsOneWidget);
     expect(find.text('Coordinates: 22.572600, 88.363900'), findsOneWidget);
 
-    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Open in Map'));
+    await tester
+        .ensureVisible(find.widgetWithText(OutlinedButton, 'Open in Map'));
     await tester.tap(find.widgetWithText(OutlinedButton, 'Open in Map'));
     await tester.pumpAndSettle();
 
@@ -1079,7 +1136,8 @@ void main() {
       find.byKey(const Key('new_farmer_main_land_field')),
       '8',
     );
-    await tester.ensureVisible(find.byKey(const Key('capture_plot_location_button')));
+    await tester
+        .ensureVisible(find.byKey(const Key('capture_plot_location_button')));
     await tester.tap(find.byKey(const Key('capture_plot_location_button')));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('save_new_farmer_button')));

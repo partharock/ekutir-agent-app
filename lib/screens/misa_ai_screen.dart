@@ -49,12 +49,12 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
     super.dispose();
   }
 
-  void _submitPrompt(BuildContext context, String prompt) {
+  Future<void> _submitPrompt(BuildContext context, String prompt) async {
     final trimmed = prompt.trim();
     if (trimmed.isEmpty) {
       return;
     }
-    context.read<AppState>().submitMisaPrompt(trimmed);
+    await context.read<AppState>().submitMisaPrompt(trimmed);
     _controller.clear();
   }
 
@@ -110,7 +110,9 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                           child: ChoiceChip(
                             label: const Text('General'),
                             selected: appState.misaMode == MisaMode.general,
-                            onSelected: (_) => appState.setMisaMode(MisaMode.general),
+                            onSelected: appState.isMisaLoading
+                                ? null
+                                : (_) => appState.setMisaMode(MisaMode.general),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -118,7 +120,9 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                           child: ChoiceChip(
                             label: const Text('Farmer-specific'),
                             selected: appState.misaMode == MisaMode.farmer,
-                            onSelected: (_) => appState.setMisaMode(MisaMode.farmer),
+                            onSelected: appState.isMisaLoading
+                                ? null
+                                : (_) => appState.setMisaMode(MisaMode.farmer),
                           ),
                         ),
                       ],
@@ -138,7 +142,9 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Select Farmer',
                         ),
-                        onChanged: appState.setMisaFarmer,
+                        onChanged: appState.isMisaLoading
+                            ? null
+                            : appState.setMisaFarmer,
                       ),
                     ],
                     const SizedBox(height: 20),
@@ -147,7 +153,9 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                       runSpacing: 10,
                       children: appState.misaSuggestedPrompts.map((prompt) {
                         return OutlinedButton(
-                          onPressed: () => _submitPrompt(context, prompt),
+                          onPressed: appState.isMisaLoading
+                              ? null
+                              : () => _submitPrompt(context, prompt),
                           child: Text(
                             prompt,
                             textAlign: TextAlign.center,
@@ -155,6 +163,25 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                         );
                       }).toList(),
                     ),
+                    if (appState.isMisaLoading) ...[
+                      const SizedBox(height: 18),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 10),
+                      Text(
+                        'MISA is reviewing the latest workflow context...',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                    if (appState.misaStatusMessage != null) ...[
+                      const SizedBox(height: 18),
+                      SectionCard(
+                        backgroundColor: AppColors.heroMist,
+                        child: Text(
+                          appState.misaStatusMessage!,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     if (appState.misaMessages.isNotEmpty) ...[
                       Text(
@@ -187,6 +214,7 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                       minLines: 1,
                       maxLines: 4,
                       textInputAction: TextInputAction.send,
+                      enabled: !appState.isMisaLoading,
                       onSubmitted: (value) => _submitPrompt(context, value),
                       decoration: const InputDecoration(
                         hintText: 'Ask anything...',
@@ -196,8 +224,16 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                   const SizedBox(width: 12),
                   FilledButton(
                     style: filledButtonStyle(),
-                    onPressed: () => _submitPrompt(context, _controller.text),
-                    child: const Text('Send'),
+                    onPressed: appState.isMisaLoading
+                        ? null
+                        : () => _submitPrompt(context, _controller.text),
+                    child: appState.isMisaLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Send'),
                   ),
                 ],
               ),

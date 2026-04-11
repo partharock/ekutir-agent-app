@@ -7,6 +7,7 @@ import '../models/procurement.dart';
 import '../models/settlement.dart';
 import '../models/support.dart';
 import '../services/device_action_service.dart';
+import '../services/misa_service.dart';
 import '../services/receipt_service.dart';
 import 'workflow_repository.dart';
 
@@ -57,6 +58,7 @@ class AppState extends ChangeNotifier {
     required this.today,
     required this.repository,
     required this.deviceActions,
+    required this.misaService,
     required this.receiptService,
     List<MisaMessage>? misaMessages,
     this.isAuthenticated = false,
@@ -65,6 +67,7 @@ class AppState extends ChangeNotifier {
   factory AppState.seeded({
     WorkflowRepository? repository,
     DeviceActionService? deviceActions,
+    MisaService? misaService,
     ReceiptService? receiptService,
     DateTime? today,
   }) {
@@ -78,6 +81,7 @@ class AppState extends ChangeNotifier {
       repository:
           repository ?? SeededWorkflowRepository.seeded(today: seedToday),
       deviceActions: deviceActions ?? PlatformDeviceActionService(),
+      misaService: misaService ?? const NetworkMisaService(),
       receiptService: receiptService ?? PdfReceiptService(),
       misaMessages: [
         MisaMessage(
@@ -99,6 +103,7 @@ class AppState extends ChangeNotifier {
   static Future<AppState> create({
     WorkflowRepository? repository,
     DeviceActionService? deviceActions,
+    MisaService? misaService,
     ReceiptService? receiptService,
     DateTime? today,
   }) async {
@@ -112,6 +117,7 @@ class AppState extends ChangeNotifier {
       repository: repository ??
           await PersistedWorkflowRepository.create(today: seedToday),
       deviceActions: deviceActions ?? PlatformDeviceActionService(),
+      misaService: misaService ?? const NetworkMisaService(),
       receiptService: receiptService ?? PdfReceiptService(),
       misaMessages: [
         MisaMessage(
@@ -137,6 +143,7 @@ class AppState extends ChangeNotifier {
   final DateTime today;
   final WorkflowRepository repository;
   final DeviceActionService deviceActions;
+  final MisaService misaService;
   final ReceiptService receiptService;
 
   final List<MisaMessage> _misaMessages;
@@ -150,6 +157,8 @@ class AppState extends ChangeNotifier {
   ProcurementRecord? lastProcurementReceipt;
   MisaMode misaMode = MisaMode.general;
   String? misaFarmerId;
+  bool isMisaLoading = false;
+  String? misaStatusMessage;
 
   List<FarmerProfile> get farmers => List.unmodifiable(repository.farmers);
 
@@ -1135,9 +1144,9 @@ class AppState extends ChangeNotifier {
 
   List<MisaMessage> get misaMessages => List.unmodifiable(_misaMessages);
 
-  void submitMisaPrompt(String prompt) {
+  Future<void> submitMisaPrompt(String prompt) async {
     final trimmed = prompt.trim();
-    if (trimmed.isEmpty) {
+    if (trimmed.isEmpty || isMisaLoading) {
       return;
     }
     final now = _timestamp();
@@ -1149,23 +1158,311 @@ class AppState extends ChangeNotifier {
         timestamp: now,
       ),
     );
-    _misaMessages.add(_buildMisaReply(trimmed, now));
+    if (misaMode == MisaMode.farmer && misaFarmerId == null) {
+      _misaMessages.add(
+        MisaMessage(
+          id: 'misa_choose_farmer_${now.microsecondsSinceEpoch}',
+          author: MisaMessageAuthor.assistant,
+          message: 'Choose a farmer first to get farmer-specific guidance.',
+          timestamp: now.add(const Duration(seconds: 1)),
+        ),
+      );
+      notifyListeners();
+      return;
+    }
+
+    isMisaLoading = true;
+    misaStatusMessage = null;
     notifyListeners();
+
+    final focusFarmer = _resolveMisaFocusFarmer();
+    try {
+      final reply = await misaService.submit(
+        _buildMisaRequest(
+          prompt: trimmed,
+          focusFarmer: focusFarmer,
+        ),
+      );
+      _misaMessages.add(
+        MisaMessage(
+          id: 'misa_reply_${_timestamp().microsecondsSinceEpoch}',
+          author: MisaMessageAuthor.assistant,
+          message: reply.message,
+          timestamp: _timestamp(),
+          recommendation: reply.recommendation,
+        ),
+      );
+    } catch (_) {
+      misaStatusMessage =
+          'MISA AI was unavailable. A workflow fallback response was used.';
+      _misaMessages.add(_buildFallbackMisaReply(trimmed, _timestamp()));
+    } finally {
+      isMisaLoading = false;
+      notifyListeners();
+    }
   }
 
-  MisaMessage _buildMisaReply(String prompt, DateTime now) {
-    if (misaMode == MisaMode.farmer && misaFarmerId == null) {
-      return MisaMessage(
-        id: 'misa_choose_farmer_${now.microsecondsSinceEpoch}',
-        author: MisaMessageAuthor.assistant,
-        message: 'Choose a farmer first to get farmer-specific guidance.',
-        timestamp: now.add(const Duration(seconds: 1)),
+  FarmerProfile _resolveMisaFocusFarmer() {
+    if (misaFarmerId != null) {
+      return farmerById(misaFarmerId!);
+    }
+    return topPriorityFarmer;
+  }
+
+  MisaRequest _buildMisaRequest({
+    required String prompt,
+    required FarmerProfile focusFarmer,
+  }) {
+    return MisaRequest(
+      prompt: prompt,
+      mode: misaMode,
+      selectedFarmerId: misaFarmerId,
+      conversation: _recentMisaMessages(),
+      context: {
+        'agent': {
+          'name': agentName,
+          'status': agentStatus,
+          'cropFocus': agentCrop,
+          'currentSeason': currentSeason,
+          'today': today.toIso8601String(),
+        },
+        'summary': {
+          'tasksToday': tasksToday,
+          'willingCount': willingCount,
+          'bookedCount': bookedCount,
+          'nurseryCount': nurseryCount,
+          'growthCount': growthCount,
+          'harvestCount': harvestCount,
+          'procurementCount': procurementCount,
+          'settlementCount': settlementCount,
+        },
+        'focusFarmer': _buildMisaFarmerSnapshot(focusFarmer),
+        'priorityFarmers': priorityFarmers
+            .take(6)
+            .map(_buildMisaFarmerSnapshot)
+            .toList(growable: false),
+        'homeTasks': homeTasks
+            .take(6)
+            .map(
+              (task) => {
+                'title': task.title,
+                'subtitle': task.subtitle,
+                'priority': task.priority.name,
+                'statusLabel': task.statusLabel,
+                'actionLabel': task.actionLabel,
+                'route': task.route,
+              },
+            )
+            .toList(growable: false),
+      },
+      candidateActions: _buildMisaActionCandidates(focusFarmer),
+    );
+  }
+
+  List<MisaMessage> _recentMisaMessages() {
+    const maxMessages = 8;
+    if (_misaMessages.length <= maxMessages) {
+      return List<MisaMessage>.of(_misaMessages);
+    }
+    return _misaMessages.sublist(_misaMessages.length - maxMessages);
+  }
+
+  Map<String, dynamic> _buildMisaFarmerSnapshot(FarmerProfile farmer) {
+    final supportRecords = unresolvedSupportFor(farmer.id);
+    final latestProcurementRecord = latestProcurement(farmer.id);
+    final settlement = settlementPreviewFor(farmer.id);
+    final activities = activitiesFor(farmer.id);
+    final nextActivity = activities.firstWhere(
+      (item) => item.status != CropActivityStatus.completed,
+      orElse: () => activities.last,
+    );
+
+    return {
+      'id': farmer.id,
+      'name': farmer.name,
+      'phone': farmer.phone,
+      'location': farmer.location,
+      'status': farmer.status.label,
+      'stage': farmer.stage.label,
+      'crop': farmer.crop,
+      'season': farmer.season,
+      'totalLandAcres': farmer.totalLandAcres,
+      'nurseryLandAcres': farmer.nurseryLandAcres,
+      'mainLandAcres': farmer.mainLandAcres,
+      'support': {
+        'cash': farmerTrackerSupportLabel(farmer.id, SupportType.cash),
+        'kind': farmerTrackerSupportLabel(farmer.id, SupportType.kind),
+        'pendingCount': supportRecords.length,
+        'otpPending': supportRecords.any((record) => record.isOtpPending),
+        'records': supportRecords
+            .take(3)
+            .map(
+              (record) => {
+                'id': record.id,
+                'type': record.type.label,
+                'status': record.statusLabel,
+                'value': record.cashAmount ?? record.kindValue ?? 0,
+              },
+            )
+            .toList(growable: false),
+      },
+      'procurement': {
+        'label': farmerTrackerProcurementLabel(farmer.id),
+        'submitted': latestProcurementRecord?.submitted ?? false,
+        'pendingSteps': farmerTrackerProcurementSteps(farmer.id)
+            .map((step) => step.label)
+            .toList(growable: false),
+        'selectedHarvestDate':
+            latestProcurementRecord?.selectedHarvestDate?.toIso8601String(),
+        'harvestWindowDates': harvestDateOptionsFor(farmer.id)
+            .map((date) => date.toIso8601String())
+            .toList(growable: false),
+      },
+      'settlement': {
+        'status': settlement.status.label,
+        'ready': canCompleteSettlement(farmer.id),
+        'netSettlement': settlement.netSettlement,
+      },
+      'nextActivity': {
+        'title': nextActivity.title,
+        'detail': nextActivity.detail,
+        'status': nextActivity.status.label,
+        'plannedDate': nextActivity.plannedDate.toIso8601String(),
+      },
+    };
+  }
+
+  List<MisaActionCandidate> _buildMisaActionCandidates(
+    FarmerProfile focusFarmer,
+  ) {
+    final candidates = <MisaActionCandidate>[];
+    final seenRoutes = <String>{};
+
+    void addCandidate(MisaActionCandidate candidate) {
+      if (seenRoutes.add(candidate.actionRoute)) {
+        candidates.add(candidate);
+      }
+    }
+
+    for (final task in homeTasks.take(6)) {
+      addCandidate(
+        MisaActionCandidate(
+          id: 'task_${task.id}',
+          title: task.title,
+          summary: task.subtitle,
+          actionLabel: task.actionLabel,
+          actionRoute: task.route,
+        ),
       );
     }
 
-    final farmer =
-        misaFarmerId == null ? topPriorityFarmer : farmerById(misaFarmerId!);
-    final recommendation = _buildRecommendation(prompt, farmer);
+    addCandidate(
+      MisaActionCandidate(
+        id: 'profile_${focusFarmer.id}',
+        title: 'Open farmer profile',
+        summary:
+            'Review ${focusFarmer.name} in detail, including support, crop plan, procurement, and settlement state.',
+        actionLabel: 'Open profile',
+        actionRoute: '/engage/farmer/${focusFarmer.id}?tab=profile',
+        farmerId: focusFarmer.id,
+      ),
+    );
+    addCandidate(
+      MisaActionCandidate(
+        id: 'crop_${focusFarmer.id}',
+        title: 'Open crop plan',
+        summary:
+            'Review the cultivation checklist and update the next pending field activity for ${focusFarmer.name}.',
+        actionLabel: 'Open crop plan',
+        actionRoute: '/crop-plan?farmerId=${focusFarmer.id}',
+        farmerId: focusFarmer.id,
+      ),
+    );
+
+    if (focusFarmer.status == FarmerStatus.willing) {
+      addCandidate(
+        MisaActionCandidate(
+          id: 'cash_start_${focusFarmer.id}',
+          title: 'Start cash advance',
+          summary:
+              'Begin booking support for ${focusFarmer.name}. Cash support plus OTP acknowledgement moves the farmer to booked.',
+          actionLabel: 'Start Cash Advance',
+          actionRoute: '/support/flow/cash?farmerId=${focusFarmer.id}',
+          farmerId: focusFarmer.id,
+        ),
+      );
+    }
+
+    for (final record in unresolvedSupportFor(focusFarmer.id).take(3)) {
+      addCandidate(
+        MisaActionCandidate(
+          id: 'support_${record.id}',
+          title: 'Continue ${record.type.shortLabel.toLowerCase()} support',
+          summary:
+              '${record.type.label} for ${record.farmerName} is at ${record.statusLabel.toLowerCase()} status and still needs follow-up.',
+          actionLabel: 'Continue Support',
+          actionRoute:
+              '/support/flow/${record.type.name}?farmerId=${record.farmerId}&recordId=${record.id}',
+          farmerId: record.farmerId,
+        ),
+      );
+    }
+
+    for (final record in procurementFor(focusFarmer.id)
+        .where((item) => !item.submitted && item.incompleteSteps.isNotEmpty)
+        .take(2)) {
+      final nextStep = record.incompleteSteps.first;
+      addCandidate(
+        MisaActionCandidate(
+          id: 'procurement_${record.id}',
+          title: 'Resume procurement',
+          summary:
+              '${record.farmerName} has procurement pending, and ${nextStep.label.toLowerCase()} is the next step.',
+          actionLabel: 'Resume Procurement',
+          actionRoute:
+              '/harvest/procurement?farmerId=${record.farmerId}&recordId=${record.id}&step=${nextStep.name}',
+          farmerId: record.farmerId,
+        ),
+      );
+    }
+
+    if (_hasHarvestScheduledToday(focusFarmer) ||
+        focusFarmer.stage == FarmerStage.harvest) {
+      addCandidate(
+        MisaActionCandidate(
+          id: 'harvest_${focusFarmer.id}',
+          title: 'Open harvest workflow',
+          summary:
+              'Capture harvest and procurement details for ${focusFarmer.name}.',
+          actionLabel: 'Open Harvest',
+          actionRoute: '/harvest/procurement?farmerId=${focusFarmer.id}',
+          farmerId: focusFarmer.id,
+        ),
+      );
+    }
+
+    if (canCompleteSettlement(focusFarmer.id) &&
+        settlementPreviewFor(focusFarmer.id).status !=
+            SettlementStatus.completed) {
+      addCandidate(
+        MisaActionCandidate(
+          id: 'settlement_${focusFarmer.id}',
+          title: 'Complete settlement',
+          summary:
+              '${focusFarmer.name} is ready for reconciliation from the farmer profile.',
+          actionLabel: 'Open Profile',
+          actionRoute: '/engage/farmer/${focusFarmer.id}?tab=profile',
+          farmerId: focusFarmer.id,
+        ),
+      );
+    }
+
+    return candidates.take(12).toList(growable: false);
+  }
+
+  MisaMessage _buildFallbackMisaReply(String prompt, DateTime now) {
+    final farmer = _resolveMisaFocusFarmer();
+    final recommendation = _buildFallbackRecommendation(prompt, farmer);
     return MisaMessage(
       id: 'misa_reply_${now.microsecondsSinceEpoch}',
       author: MisaMessageAuthor.assistant,
@@ -1177,7 +1474,10 @@ class AppState extends ChangeNotifier {
 
   FarmerProfile get topPriorityFarmer => priorityFarmers.first;
 
-  MisaRecommendation _buildRecommendation(String prompt, FarmerProfile farmer) {
+  MisaRecommendation _buildFallbackRecommendation(
+    String prompt,
+    FarmerProfile farmer,
+  ) {
     final lower = prompt.toLowerCase();
     final pendingSupport = supportFor(farmer.id).firstWhere(
       (item) => !item.isAcknowledged,

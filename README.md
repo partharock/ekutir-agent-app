@@ -5,7 +5,7 @@ Flutter implementation of the eK Acre Growth agent experience based on the expor
 ## Included
 - App shell with `go_router`
 - Mock data and in-memory state
-- Auth, home, engagement, support, harvest/procurement, crop plan, and `MISA AI` placeholder flows
+- Auth, home, engagement, support, harvest/procurement, crop plan, and `MISA AI`
 - Widget test scaffolding
 
 ## Local Development
@@ -40,3 +40,5 @@ Notes:
 - If `MAPPLS_WEB_STATIC_KEY` is empty, the web app still deploys, but plot map features remain disabled.
 - The Cloudflare Pages hostname must be whitelisted in the Mappls web credential setup.
 - `web/_redirects` is included so Flutter routes work on refresh and deep links.
+- `functions/api/misa.js` provides the MISA assistant backend through Cloudflare Pages Functions.
+- `wrangler.jsonc` includes a Workers AI binding named `AI`, so MISA runs without putting a model key in the Flutter client.

@@ -1,5 +1,8 @@
 {
   "name": "ekutir-agent-app",
   "pages_build_output_dir": "./build/web",
-  "compatibility_date": "2026-04-07"
+  "compatibility_date": "2026-04-07",
+  "ai": {
+    "binding": "AI"
+  }
 }

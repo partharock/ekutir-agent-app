@@ -14,6 +14,7 @@ import 'screens/support_screens.dart';
 import 'screens/harvest_screens.dart';
 import 'screens/crop_plan_screen.dart';
 import 'screens/misa_ai_screen.dart';
+import 'services/misa_service.dart';
 import 'services/plot_location_service.dart';
 
 const bool _debugAutoLogin = bool.fromEnvironment('AUTO_LOGIN');
@@ -60,9 +61,10 @@ void _applyDebugSeed(AppState appState) {
 
 Widget buildEkAcreGrowthApp({
   AppState? appState,
+  MisaService? misaService,
   PlotLocationService? plotLocationService,
 }) {
-  final state = appState ?? AppState.seeded();
+  final state = appState ?? AppState.seeded(misaService: misaService);
   return MultiProvider(
     providers: [
       ChangeNotifierProvider<AppState>.value(value: state),
