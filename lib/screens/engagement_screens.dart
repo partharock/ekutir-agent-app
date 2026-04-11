@@ -7,6 +7,7 @@ import '../models/farmer.dart';
 import '../models/procurement.dart';
 import '../models/settlement.dart';
 import '../models/support.dart';
+import '../services/plot_location_service.dart';
 import '../state/app_state.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
@@ -155,6 +156,8 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
   final _mainLandController = TextEditingController();
 
   bool _defaultsApplied = false;
+  PlotLocation? _plotLocation;
+  bool _isCapturingPlotLocation = false;
 
   @override
   void didChangeDependencies() {
@@ -227,6 +230,43 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
     return null;
   }
 
+  Future<void> _capturePlotLocation() async {
+    setState(() {
+      _isCapturingPlotLocation = true;
+    });
+
+    try {
+      final plotLocation = await context.read<PlotLocationService>()
+          .capturePlotLocation(
+        context,
+        locationHint: _locationController.text,
+        currentLocation: _plotLocation,
+      );
+      if (plotLocation != null && mounted) {
+        setState(() {
+          _plotLocation = plotLocation;
+        });
+      }
+    } on PlotLocationException catch (error) {
+      if (mounted) {
+        showMockSnackBar(context, error.message);
+      }
+    } catch (_) {
+      if (mounted) {
+        showMockSnackBar(
+          context,
+          'Unable to open the plot location picker.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCapturingPlotLocation = false;
+        });
+      }
+    }
+  }
+
   void _submit(AppState appState) {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -236,6 +276,7 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
       name: _nameController.text,
       phone: _phoneController.text,
       location: _locationController.text,
+      plotLocation: _plotLocation,
       crop: _cropController.text,
       season: _seasonController.text,
       landDetails: _landDetailsController.text,
@@ -335,6 +376,75 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
                     validator: (value) =>
                         _validateRequired(value, 'Land details'),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Plot GPS Location',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Capture the exact plot point on a Mappls map. The village/location field above stays unchanged for search and list views.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      key: const Key('capture_plot_location_button'),
+                      onPressed:
+                          _isCapturingPlotLocation ? null : _capturePlotLocation,
+                      icon: _isCapturingPlotLocation
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              _plotLocation == null
+                                  ? Icons.location_searching_outlined
+                                  : Icons.edit_location_alt_outlined,
+                            ),
+                      label: Text(
+                        _isCapturingPlotLocation
+                            ? 'Opening Map...'
+                            : _plotLocation == null
+                                ? 'Capture Plot on Map'
+                                : 'Retake Plot Location',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Saved Plot',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _plotLocation?.displayAddress ?? 'Not captured',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                  ),
+                  if (_plotLocation != null) ...[
+                    const SizedBox(height: 10),
+                    InfoPair(
+                      label: 'Coordinates',
+                      value: _plotLocation!.coordinatesLabel,
+                    ),
+                    const SizedBox(height: 10),
+                    InfoPair(
+                      label: 'Captured At',
+                      value: formatDateTime(_plotLocation!.capturedAt),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -587,6 +697,8 @@ class ProfileTab extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               InfoPair(label: 'Land Details', value: farmer.landDetails),
+              const SizedBox(height: 12),
+              FarmerPlotLocationSection(farmer: farmer),
             ],
           ),
         ),

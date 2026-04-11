@@ -8,9 +8,7 @@ Flutter implementation of the eK Acre Growth agent experience based on the expor
 - Auth, home, engagement, support, harvest/procurement, crop plan, and `MISA AI` placeholder flows
 - Widget test scaffolding
 
-## Note
-This environment did not have a working Flutter SDK, and installing it failed because the machine ran out of disk space during extraction. The repository therefore contains the Flutter app source (`lib/`, `test/`, `pubspec.yaml`), but not the generated `android/` and `ios/` platform folders.
-
+## Local Development
 Once Flutter is available locally, run:
 
 ```bash
@@ -19,3 +17,26 @@ flutter pub get
 flutter test
 flutter run
 ```
+
+## Web Testing
+This repo includes Flutter web support and a Cloudflare Pages deployment path.
+
+Build a web bundle for hosting:
+
+```bash
+MAPPLS_WEB_STATIC_KEY="your-mappls-web-static-key" \
+bash tool/build_web_for_pages.sh
+```
+
+Deploy the built web app to Cloudflare Pages:
+
+```bash
+MAPPLS_WEB_STATIC_KEY="your-mappls-web-static-key" \
+CLOUDFLARE_PAGES_PROJECT_NAME="ekutir-agent-app" \
+bash tool/deploy_pages.sh
+```
+
+Notes:
+- If `MAPPLS_WEB_STATIC_KEY` is empty, the web app still deploys, but plot map features remain disabled.
+- The Cloudflare Pages hostname must be whitelisted in the Mappls web credential setup.
+- `web/_redirects` is included so Flutter routes work on refresh and deep links.

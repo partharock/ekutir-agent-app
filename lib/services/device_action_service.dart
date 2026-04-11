@@ -1,3 +1,4 @@
+import '../models/farmer.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -5,6 +6,7 @@ abstract class DeviceActionService {
   Future<bool> callPhone(String phoneNumber);
   Future<bool> sendSms(String phoneNumber, {String? body});
   Future<bool> shareText({required String text, String? subject});
+  Future<bool> openMapLocation(PlotLocation plotLocation, {String? label});
 }
 
 class PlatformDeviceActionService implements DeviceActionService {
@@ -39,6 +41,16 @@ class PlatformDeviceActionService implements DeviceActionService {
     }
   }
 
+  @override
+  Future<bool> openMapLocation(PlotLocation plotLocation, {String? label}) {
+    return _launch(
+      buildMapplsLocationUri(
+        plotLocation,
+        label: label,
+      ),
+    );
+  }
+
   Future<bool> _launch(Uri uri) async {
     try {
       return launchUrl(uri);
@@ -46,4 +58,16 @@ class PlatformDeviceActionService implements DeviceActionService {
       return false;
     }
   }
+}
+
+Uri buildMapplsLocationUri(PlotLocation plotLocation, {String? label}) {
+  final queryParameters = <String, String>{};
+  if (label != null && label.trim().isNotEmpty) {
+    queryParameters['title'] = label.trim();
+  }
+  return Uri.https(
+    'mappls.com',
+    '/location/${plotLocation.latitude},${plotLocation.longitude}',
+    queryParameters.isEmpty ? null : queryParameters,
+  );
 }

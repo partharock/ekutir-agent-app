@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'dart:math' as math;
 
+import '../state/app_state.dart';
 import '../theme/app_colors.dart';
 import '../models/farmer.dart';
 import '../utils/formatters.dart';
@@ -370,6 +372,8 @@ class FarmerDetailSummary extends StatelessWidget {
           InfoPair(label: 'Phone', value: farmer.phone),
           const SizedBox(height: 8),
           InfoPair(label: 'Address', value: farmer.location),
+          const SizedBox(height: 12),
+          FarmerPlotLocationSection(farmer: farmer),
           const SizedBox(height: 8),
           InfoPair(
             label: 'Land Area',
@@ -379,6 +383,65 @@ class FarmerDetailSummary extends StatelessWidget {
           InfoPair(label: 'Crop', value: farmer.crop),
         ],
       ),
+    );
+  }
+}
+
+class FarmerPlotLocationSection extends StatelessWidget {
+  const FarmerPlotLocationSection({super.key, required this.farmer});
+
+  final FarmerProfile farmer;
+
+  @override
+  Widget build(BuildContext context) {
+    final plotLocation = farmer.plotLocation;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Plot Location',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          plotLocation?.displayAddress ?? 'Not captured',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+        ),
+        if (plotLocation != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Coordinates: ${plotLocation.coordinatesLabel}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Captured: ${formatDateTime(plotLocation.capturedAt)}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final success = await context
+                    .read<AppState>()
+                    .openFarmerPlotLocation(farmer.id);
+                if (context.mounted) {
+                  showMockSnackBar(
+                    context,
+                    success ? 'Map opened.' : 'Unable to open the map.',
+                  );
+                }
+              },
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Open in Map'),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

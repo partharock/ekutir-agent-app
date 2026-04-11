@@ -1,0 +1,5 @@
+/mappls-config.js
+  Cache-Control: no-store
+
+/flutter_bootstrap.js
+  Cache-Control: no-cache

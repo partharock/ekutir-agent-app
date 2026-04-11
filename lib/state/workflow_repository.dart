@@ -134,6 +134,7 @@ WorkflowSnapshot buildSeededWorkflowSnapshot({DateTime? today}) {
     required String name,
     required String phone,
     required String location,
+    PlotLocation? plotLocation,
     required double acres,
     required FarmerStatus status,
     required FarmerStage stage,
@@ -146,6 +147,7 @@ WorkflowSnapshot buildSeededWorkflowSnapshot({DateTime? today}) {
       name: name,
       phone: phone,
       location: location,
+      plotLocation: plotLocation,
       totalLandAcres: acres,
       crop: crop,
       season: season,
@@ -708,6 +710,9 @@ Map<String, dynamic> _farmerToJson(FarmerProfile farmer) {
     'name': farmer.name,
     'phone': farmer.phone,
     'location': farmer.location,
+    'plotLocation': farmer.plotLocation == null
+        ? null
+        : _plotLocationToJson(farmer.plotLocation!),
     'totalLandAcres': farmer.totalLandAcres,
     'crop': farmer.crop,
     'season': farmer.season,
@@ -726,6 +731,9 @@ FarmerProfile _farmerFromJson(Map<String, dynamic> json) {
     name: json['name'] as String,
     phone: json['phone'] as String,
     location: json['location'] as String,
+    plotLocation: _plotLocationFromJson(
+      json['plotLocation'] as Map<String, dynamic>?,
+    ),
     totalLandAcres: (json['totalLandAcres'] as num).toDouble(),
     crop: json['crop'] as String,
     season: json['season'] as String,
@@ -737,6 +745,28 @@ FarmerProfile _farmerFromJson(Map<String, dynamic> json) {
     supportPreview: Map<String, String>.from(
       json['supportPreview'] as Map<String, dynamic>? ?? const {},
     ),
+  );
+}
+
+Map<String, dynamic> _plotLocationToJson(PlotLocation location) {
+  return {
+    'latitude': location.latitude,
+    'longitude': location.longitude,
+    'displayAddress': location.displayAddress,
+    'capturedAt': location.capturedAt.toIso8601String(),
+  };
+}
+
+PlotLocation? _plotLocationFromJson(Map<String, dynamic>? json) {
+  if (json == null) {
+    return null;
+  }
+  return PlotLocation(
+    latitude: (json['latitude'] as num).toDouble(),
+    longitude: (json['longitude'] as num).toDouble(),
+    displayAddress: json['displayAddress'] as String?,
+    capturedAt: DateTime.tryParse(json['capturedAt'] as String? ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0),
   );
 }
 

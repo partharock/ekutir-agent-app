@@ -301,6 +301,9 @@ class AppState extends ChangeNotifier {
       name: draft.name.trim(),
       phone: normalizePhoneNumber(draft.phone),
       location: draft.location.trim(),
+      plotLocation: draft.plotLocation?.copyWith(
+        displayAddress: draft.plotLocation?.displayAddress?.trim(),
+      ),
       crop: draft.crop.trim(),
       season: draft.season.trim(),
       landDetails: draft.landDetails.trim(),
@@ -316,6 +319,7 @@ class AppState extends ChangeNotifier {
       name: sanitized.name,
       phone: sanitized.phone,
       location: sanitized.location,
+      plotLocation: sanitized.plotLocation,
       totalLandAcres: sanitized.totalLandAcres,
       crop: sanitized.crop,
       season: sanitized.season,
@@ -1060,6 +1064,18 @@ class AppState extends ChangeNotifier {
 
   Future<bool> messageFarmer(String farmerId, {String? body}) =>
       deviceActions.sendSms(farmerById(farmerId).phone, body: body);
+
+  Future<bool> openFarmerPlotLocation(String farmerId) {
+    final farmer = farmerById(farmerId);
+    final plotLocation = farmer.plotLocation;
+    if (plotLocation == null) {
+      return Future.value(false);
+    }
+    return deviceActions.openMapLocation(
+      plotLocation,
+      label: farmer.name,
+    );
+  }
 
   Future<bool> shareFarmerSummary(String farmerId) {
     final farmer = farmerById(farmerId);

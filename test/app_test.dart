@@ -8,6 +8,7 @@ import 'package:ekutir_agent_app/models/settlement.dart';
 import 'package:ekutir_agent_app/models/support.dart';
 import 'package:ekutir_agent_app/screens/home_screen.dart';
 import 'package:ekutir_agent_app/services/device_action_service.dart';
+import 'package:ekutir_agent_app/services/plot_location_service.dart';
 import 'package:ekutir_agent_app/services/receipt_service.dart';
 import 'package:ekutir_agent_app/state/app_state.dart';
 import 'package:ekutir_agent_app/state/workflow_repository.dart';
@@ -19,6 +20,10 @@ class FakeDeviceActionService implements DeviceActionService {
   int callCount = 0;
   int smsCount = 0;
   int shareCount = 0;
+  int openMapCount = 0;
+  Uri? lastOpenedMapUri;
+  PlotLocation? lastOpenedPlotLocation;
+  String? lastMapLabel;
 
   @override
   Future<bool> callPhone(String phoneNumber) async {
@@ -36,6 +41,41 @@ class FakeDeviceActionService implements DeviceActionService {
   Future<bool> shareText({required String text, String? subject}) async {
     shareCount += 1;
     return true;
+  }
+
+  @override
+  Future<bool> openMapLocation(PlotLocation plotLocation, {String? label}) async {
+    openMapCount += 1;
+    lastOpenedPlotLocation = plotLocation;
+    lastMapLabel = label;
+    lastOpenedMapUri = buildMapplsLocationUri(
+      plotLocation,
+      label: label,
+    );
+    return true;
+  }
+}
+
+class FakePlotLocationService implements PlotLocationService {
+  FakePlotLocationService({this.nextResult, this.errorMessage});
+
+  PlotLocation? nextResult;
+  String? errorMessage;
+  int requestCount = 0;
+  String? lastLocationHint;
+
+  @override
+  Future<PlotLocation?> capturePlotLocation(
+    BuildContext context, {
+    required String locationHint,
+    PlotLocation? currentLocation,
+  }) async {
+    requestCount += 1;
+    lastLocationHint = locationHint;
+    if (errorMessage != null) {
+      throw PlotLocationException(errorMessage!);
+    }
+    return nextResult;
   }
 }
 
@@ -107,10 +147,16 @@ Future<void> flushPersistedWrites(AppState state) async {
 Future<void> pumpAuthenticatedApp(
   WidgetTester tester, {
   AppState? appState,
+  PlotLocationService? plotLocationService,
 }) async {
   final state = appState ?? buildState();
   state.isAuthenticated = true;
-  await tester.pumpWidget(buildEkAcreGrowthApp(appState: state));
+  await tester.pumpWidget(
+    buildEkAcreGrowthApp(
+      appState: state,
+      plotLocationService: plotLocationService,
+    ),
+  );
   await tester.pump(const Duration(milliseconds: 1300));
   await tester.pumpAndSettle();
 }
@@ -243,6 +289,40 @@ void main() {
     );
   });
 
+  test('agent can add a willing farmer with an optional plot GPS location', () {
+    final state = buildState();
+    final capturedAt = DateTime(2026, 3, 29, 10, 15);
+
+    final farmer = state.addWillingFarmer(
+      NewFarmerDraft(
+        name: 'Plot Farmer',
+        phone: '+91 9898989800',
+        location: 'Karimpur',
+        plotLocation: PlotLocation(
+          latitude: 22.5726,
+          longitude: 88.3639,
+          displayAddress: 'Village road plot, Karimpur',
+          capturedAt: capturedAt,
+        ),
+        crop: 'Rice',
+        season: 'Kharif 2026',
+        landDetails: 'Plot next to irrigation channel.',
+        totalLandAcres: 8,
+        nurseryLandAcres: 3,
+        mainLandAcres: 5,
+      ),
+    );
+
+    expect(farmer, isNotNull);
+    expect(farmer!.plotLocation, isNotNull);
+    expect(farmer.plotLocation!.coordinatesLabel, '22.572600, 88.363900');
+    expect(
+      farmer.plotLocation!.displayAddress,
+      'Village road plot, Karimpur',
+    );
+    expect(state.farmerById(farmer.id).plotLocation!.capturedAt, capturedAt);
+  });
+
   test(
       'add willing farmer rejects duplicate phone numbers and invalid land split',
       () {
@@ -297,6 +377,92 @@ void main() {
         ),
       ),
       isNull,
+    );
+  });
+
+  test('workflow snapshot preserves plot GPS and old data still loads', () {
+    final capturedAt = DateTime(2026, 3, 29, 9, 45);
+    final snapshot = WorkflowSnapshot(
+      farmers: [
+        FarmerProfile(
+          id: 'plot-farmer',
+          name: 'Plot Farmer',
+          phone: '+919000000010',
+          location: 'Karimpur',
+          plotLocation: PlotLocation(
+            latitude: 22.5726,
+            longitude: 88.3639,
+            displayAddress: 'Village road plot, Karimpur',
+            capturedAt: capturedAt,
+          ),
+          totalLandAcres: 8,
+          crop: 'Rice',
+          season: 'Kharif 2026',
+          status: FarmerStatus.willing,
+          stage: FarmerStage.willing,
+          nurseryLandAcres: 3,
+          mainLandAcres: 5,
+          landDetails: 'Plot next to irrigation channel.',
+          supportPreview: defaultSupportPreview(),
+        ),
+      ],
+      activities: const {},
+      support: const {},
+      procurement: const {},
+      settlements: const {},
+    );
+
+    final roundTrip = WorkflowSnapshot.fromJson(snapshot.toJson());
+    expect(roundTrip.farmers.single.plotLocation, isNotNull);
+    expect(
+      roundTrip.farmers.single.plotLocation!.displayAddress,
+      'Village road plot, Karimpur',
+    );
+    expect(
+      roundTrip.farmers.single.plotLocation!.capturedAt,
+      capturedAt,
+    );
+
+    final legacyJson = snapshot.toJson();
+    final farmerJson =
+        (legacyJson['farmers'] as List<dynamic>).single as Map<String, dynamic>;
+    farmerJson.remove('plotLocation');
+
+    final legacyRoundTrip = WorkflowSnapshot.fromJson(legacyJson);
+    expect(legacyRoundTrip.farmers.single.plotLocation, isNull);
+  });
+
+  test('openFarmerPlotLocation builds the Mappls external URL', () async {
+    final deviceActions = FakeDeviceActionService();
+    final state = buildState(deviceActions: deviceActions);
+
+    final farmer = state.addWillingFarmer(
+      NewFarmerDraft(
+        name: 'Map Farmer',
+        phone: '+91 9898989700',
+        location: 'Karimpur',
+        plotLocation: PlotLocation(
+          latitude: 22.5726,
+          longitude: 88.3639,
+          displayAddress: 'Village road plot, Karimpur',
+          capturedAt: DateTime(2026, 3, 29, 8, 0),
+        ),
+        crop: 'Rice',
+        season: 'Kharif 2026',
+        landDetails: 'Plot next to irrigation channel.',
+        totalLandAcres: 8,
+        nurseryLandAcres: 3,
+        mainLandAcres: 5,
+      ),
+    );
+
+    final opened = await state.openFarmerPlotLocation(farmer!.id);
+
+    expect(opened, isTrue);
+    expect(deviceActions.openMapCount, 1);
+    expect(
+      deviceActions.lastOpenedMapUri.toString(),
+      'https://mappls.com/location/22.5726,88.3639?title=Map+Farmer',
     );
   });
 
@@ -769,6 +935,173 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Nandita Roy'), findsWidgets);
+  });
+
+  testWidgets('add willing farmer shows captured plot GPS preview', (
+    tester,
+  ) async {
+    final plotLocationService = FakePlotLocationService(
+      nextResult: PlotLocation(
+        latitude: 22.5726,
+        longitude: 88.3639,
+        displayAddress: 'Village road plot, Karimpur',
+        capturedAt: DateTime(2026, 3, 29, 11, 0),
+      ),
+    );
+
+    await pumpAuthenticatedApp(
+      tester,
+      plotLocationService: plotLocationService,
+    );
+
+    await tester.tap(find.text('Engage').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add_willing_farmer_button')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_location_field')),
+      'Karimpur',
+    );
+    await tester.ensureVisible(find.byKey(const Key('capture_plot_location_button')));
+    await tester.tap(find.byKey(const Key('capture_plot_location_button')));
+    await tester.pumpAndSettle();
+
+    expect(plotLocationService.requestCount, 1);
+    expect(plotLocationService.lastLocationHint, 'Karimpur');
+    expect(find.text('Village road plot, Karimpur'), findsOneWidget);
+    expect(find.text('22.572600, 88.363900'), findsOneWidget);
+    expect(find.text('Retake Plot Location'), findsOneWidget);
+  });
+
+  testWidgets('farmer details show plot GPS and open in map action', (
+    tester,
+  ) async {
+    final fakeDevice = FakeDeviceActionService();
+    final appState = buildState(deviceActions: fakeDevice);
+    appState.addWillingFarmer(
+      NewFarmerDraft(
+        name: 'Plot Details Farmer',
+        phone: '+91 9000000999',
+        location: 'Karimpur',
+        plotLocation: PlotLocation(
+          latitude: 22.5726,
+          longitude: 88.3639,
+          displayAddress: 'Village road plot, Karimpur',
+          capturedAt: DateTime(2026, 3, 29, 8, 15),
+        ),
+        crop: 'Rice',
+        season: 'Kharif 2026',
+        landDetails: 'Plot next to irrigation channel.',
+        totalLandAcres: 8,
+        nurseryLandAcres: 3,
+        mainLandAcres: 5,
+      ),
+    );
+
+    await pumpAuthenticatedApp(tester, appState: appState);
+
+    await tester.tap(find.text('Engage').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Plot Details Farmer').first);
+    await tester.tap(find.text('Plot Details Farmer').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Plot Location'), findsWidgets);
+    expect(find.text('Village road plot, Karimpur'), findsOneWidget);
+    expect(find.text('Coordinates: 22.572600, 88.363900'), findsOneWidget);
+
+    await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Open in Map'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Open in Map'));
+    await tester.pumpAndSettle();
+
+    expect(fakeDevice.openMapCount, 1);
+  });
+
+  testWidgets('plot GPS persists after app rebuild and shows in details', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    final plotLocationService = FakePlotLocationService(
+      nextResult: PlotLocation(
+        latitude: 22.5726,
+        longitude: 88.3639,
+        displayAddress: 'Village road plot, Karimpur',
+        capturedAt: DateTime(2026, 3, 29, 12, 0),
+      ),
+    );
+    final appState = await buildPersistedState();
+    await pumpAuthenticatedApp(
+      tester,
+      appState: appState,
+      plotLocationService: plotLocationService,
+    );
+
+    await tester.tap(find.text('Engage').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add_willing_farmer_button')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_name_field')),
+      'Plot Persist Farmer',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_phone_field')),
+      '+91 9000000210',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_location_field')),
+      'Karimpur',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_crop_field')),
+      'Rice',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_season_field')),
+      'Kharif 2026',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_land_details_field')),
+      '2-acre nursery and 8-acre main plot.',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_total_land_field')),
+      '10',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_nursery_land_field')),
+      '2',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new_farmer_main_land_field')),
+      '8',
+    );
+    await tester.ensureVisible(find.byKey(const Key('capture_plot_location_button')));
+    await tester.tap(find.byKey(const Key('capture_plot_location_button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('save_new_farmer_button')));
+    await tester.tap(find.byKey(const Key('save_new_farmer_button')));
+    await tester.pumpAndSettle();
+
+    await flushPersistedWrites(appState);
+
+    final reloadedState = await buildPersistedState();
+    await pumpAuthenticatedApp(tester, appState: reloadedState);
+
+    await tester.tap(find.text('Engage').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('All Farmers'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Plot Persist Farmer').first);
+    await tester.tap(find.text('Plot Persist Farmer').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Village road plot, Karimpur'), findsOneWidget);
+    expect(find.text('Coordinates: 22.572600, 88.363900'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Open in Map'), findsOneWidget);
   });
 
   testWidgets(

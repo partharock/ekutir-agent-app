@@ -14,6 +14,7 @@ import 'screens/support_screens.dart';
 import 'screens/harvest_screens.dart';
 import 'screens/crop_plan_screen.dart';
 import 'screens/misa_ai_screen.dart';
+import 'services/plot_location_service.dart';
 
 const bool _debugAutoLogin = bool.fromEnvironment('AUTO_LOGIN');
 const String _debugInitialRoute =
@@ -57,10 +58,18 @@ void _applyDebugSeed(AppState appState) {
   }
 }
 
-Widget buildEkAcreGrowthApp({AppState? appState}) {
+Widget buildEkAcreGrowthApp({
+  AppState? appState,
+  PlotLocationService? plotLocationService,
+}) {
   final state = appState ?? AppState.seeded();
-  return ChangeNotifierProvider<AppState>.value(
-    value: state,
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider<AppState>.value(value: state),
+      Provider<PlotLocationService>.value(
+        value: plotLocationService ?? const MapplsPlotLocationService(),
+      ),
+    ],
     child: EkAcreGrowthApp(appState: state),
   );
 }

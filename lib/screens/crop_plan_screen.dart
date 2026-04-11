@@ -235,6 +235,8 @@ class _FarmerCropPlanDetail extends StatelessWidget {
                 const SizedBox(height: 10),
                 InfoPair(label: 'Address', value: farmer.location),
                 const SizedBox(height: 10),
+                FarmerPlotLocationSection(farmer: farmer),
+                const SizedBox(height: 10),
                 InfoPair(
                   label: 'Total Land',
                   value: '${farmer.totalLandAcres.toStringAsFixed(1)} acres',

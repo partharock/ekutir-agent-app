@@ -120,12 +120,44 @@ String stageHelperText(FarmerStage stage) {
   }
 }
 
+class PlotLocation {
+  const PlotLocation({
+    required this.latitude,
+    required this.longitude,
+    this.displayAddress,
+    required this.capturedAt,
+  });
+
+  final double latitude;
+  final double longitude;
+  final String? displayAddress;
+  final DateTime capturedAt;
+
+  String get coordinatesLabel =>
+      '${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)}';
+
+  PlotLocation copyWith({
+    double? latitude,
+    double? longitude,
+    String? displayAddress,
+    DateTime? capturedAt,
+  }) {
+    return PlotLocation(
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      displayAddress: displayAddress ?? this.displayAddress,
+      capturedAt: capturedAt ?? this.capturedAt,
+    );
+  }
+}
+
 class FarmerProfile {
   const FarmerProfile({
     required this.id,
     required this.name,
     required this.phone,
     required this.location,
+    this.plotLocation,
     required this.totalLandAcres,
     required this.crop,
     required this.season,
@@ -141,6 +173,7 @@ class FarmerProfile {
   final String name;
   final String phone;
   final String location;
+  final PlotLocation? plotLocation;
   final double totalLandAcres;
   final String crop;
   final String season;
@@ -156,6 +189,7 @@ class FarmerProfile {
     String? name,
     String? phone,
     String? location,
+    PlotLocation? plotLocation,
     double? totalLandAcres,
     String? crop,
     String? season,
@@ -171,6 +205,7 @@ class FarmerProfile {
       name: name ?? this.name,
       phone: phone ?? this.phone,
       location: location ?? this.location,
+      plotLocation: plotLocation ?? this.plotLocation,
       totalLandAcres: totalLandAcres ?? this.totalLandAcres,
       crop: crop ?? this.crop,
       season: season ?? this.season,
@@ -189,6 +224,7 @@ class NewFarmerDraft {
     required this.name,
     required this.phone,
     required this.location,
+    this.plotLocation,
     required this.crop,
     required this.season,
     required this.landDetails,
@@ -200,6 +236,7 @@ class NewFarmerDraft {
   final String name;
   final String phone;
   final String location;
+  final PlotLocation? plotLocation;
   final String crop;
   final String season;
   final String landDetails;
@@ -211,6 +248,7 @@ class NewFarmerDraft {
     String? name,
     String? phone,
     String? location,
+    PlotLocation? plotLocation,
     String? crop,
     String? season,
     String? landDetails,
@@ -222,6 +260,7 @@ class NewFarmerDraft {
       name: name ?? this.name,
       phone: phone ?? this.phone,
       location: location ?? this.location,
+      plotLocation: plotLocation ?? this.plotLocation,
       crop: crop ?? this.crop,
       season: season ?? this.season,
       landDetails: landDetails ?? this.landDetails,
