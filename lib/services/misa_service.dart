@@ -73,10 +73,6 @@ class NetworkMisaService implements MisaService {
   }
 
   Uri get _endpoint {
-    if (kIsWeb) {
-      return Uri.base.resolve('/api/misa');
-    }
-
     final configured = baseUrl?.trim();
     final resolvedBase = (configured != null && configured.isNotEmpty)
         ? configured
@@ -84,6 +80,15 @@ class NetworkMisaService implements MisaService {
             'MISA_API_BASE_URL',
             defaultValue: 'https://ekutir-agent-app.pages.dev',
           );
+
+    if (kIsWeb) {
+      if (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') {
+        // Reroute to remote function if testing web locally
+        return Uri.parse(resolvedBase).resolve('/api/misa');
+      }
+      return Uri.base.resolve('/api/misa');
+    }
+
     return Uri.parse(resolvedBase).resolve('/api/misa');
   }
 }
