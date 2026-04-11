@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -50,12 +51,12 @@ class _EngagementScreenState extends State<EngagementScreen> {
     }).toList();
 
     return PageScaffold(
-      title: 'Engage',
+      title: 'Engage'.tr,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SearchField(
-            hintText: 'Search farmer name, location...',
+            hintText: 'Search farmer name, location...'.tr,
             onChanged: (value) => setState(() {
               _query = value;
             }),
@@ -68,9 +69,9 @@ class _EngagementScreenState extends State<EngagementScreen> {
               style: filledButtonStyle(),
               onPressed: () => context.go('/engage/add'),
               icon: const Icon(Icons.person_add_alt_1_outlined),
-              label: const Padding(
+              label: Padding(
                 padding: EdgeInsets.symmetric(vertical: 14),
-                child: Text('Add Willing Farmer'),
+                child: Text('Add Willing Farmer'.tr),
               ),
             ),
           ),
@@ -80,7 +81,7 @@ class _EngagementScreenState extends State<EngagementScreen> {
             child: Row(
               children: [
                 _DirectoryTabChip(
-                  label: 'Willing Farmers',
+                  label: 'Willing Farmers'.tr,
                   selected: _filter == FarmerDirectoryTab.willing,
                   onTap: () => setState(() {
                     _filter = FarmerDirectoryTab.willing;
@@ -88,7 +89,7 @@ class _EngagementScreenState extends State<EngagementScreen> {
                 ),
                 const SizedBox(width: 10),
                 _DirectoryTabChip(
-                  label: 'Booked Farmers',
+                  label: 'Booked Farmers'.tr,
                   selected: _filter == FarmerDirectoryTab.booked,
                   onTap: () => setState(() {
                     _filter = FarmerDirectoryTab.booked;
@@ -96,7 +97,7 @@ class _EngagementScreenState extends State<EngagementScreen> {
                 ),
                 const SizedBox(width: 10),
                 _DirectoryTabChip(
-                  label: 'All Farmers',
+                  label: 'All Farmers'.tr,
                   selected: _filter == FarmerDirectoryTab.all,
                   onTap: () => setState(() {
                     _filter = FarmerDirectoryTab.all;
@@ -116,8 +117,8 @@ class _EngagementScreenState extends State<EngagementScreen> {
           ),
           const SizedBox(height: 14),
           if (farmers.isEmpty)
-            const EmptyStateCard(
-              message: 'No farmers match the selected engage filter.',
+            EmptyStateCard(
+              message: 'No farmers match the selected engage filter.'.tr,
             )
           else
             ...farmers.map(
@@ -300,7 +301,7 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
     final appState = context.watch<AppState>();
 
     return PageScaffold(
-      title: 'Add Willing Farmer',
+      title: 'Add Willing Farmer'.tr,
       showBack: true,
       description: 'Capture the farmer details for onboarding.',
       onBack: () => context.go('/engage?tab=willing'),
@@ -310,9 +311,9 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
           key: const Key('save_new_farmer_button'),
           style: filledButtonStyle(),
           onPressed: () => _submit(appState),
-          child: const Padding(
+          child: Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
-            child: Text('Save Farmer'),
+            child: Text('Save Farmer'.tr),
           ),
         ),
       ),
@@ -436,12 +437,12 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
                   if (_plotLocation != null) ...[
                     const SizedBox(height: 10),
                     InfoPair(
-                      label: 'Coordinates',
+                      label: 'Coordinates'.tr,
                       value: _plotLocation!.coordinatesLabel,
                     ),
                     const SizedBox(height: 10),
                     InfoPair(
-                      label: 'Captured At',
+                      label: 'Captured At'.tr,
                       value: formatDateTime(_plotLocation!.capturedAt),
                     ),
                   ],
@@ -527,7 +528,7 @@ class FarmerProfileScreen extends StatelessWidget {
     final showCultivationTab = farmer.status == FarmerStatus.booked;
 
     return PageScaffold(
-      title: 'Farmer Profile',
+      title: 'Farmer Profile'.tr,
       showBack: true,
       onBack: () => context.go(
         switch (farmer.status) {
@@ -580,7 +581,7 @@ class FarmerProfileScreen extends StatelessWidget {
                         }
                       },
                       icon: const Icon(Icons.call_outlined),
-                      label: const Text('Call'),
+                      label: Text('Call'.tr),
                     ),
                     OutlinedButton.icon(
                       onPressed: () async {
@@ -599,7 +600,7 @@ class FarmerProfileScreen extends StatelessWidget {
                         }
                       },
                       icon: const Icon(Icons.sms_outlined),
-                      label: const Text('Message'),
+                      label: Text('Message'.tr),
                     ),
                     OutlinedButton.icon(
                       onPressed: () async {
@@ -615,7 +616,7 @@ class FarmerProfileScreen extends StatelessWidget {
                         }
                       },
                       icon: const Icon(Icons.share_outlined),
-                      label: const Text('Share'),
+                      label: Text('Share'.tr),
                     ),
                   ],
                 ),
@@ -628,7 +629,7 @@ class FarmerProfileScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: _DirectoryTabChip(
-                    label: 'Farmer Profile',
+                    label: 'Farmer Profile'.tr,
                     selected: !isCultivationTab,
                     onTap: () =>
                         context.go('/engage/farmer/$farmerId?tab=profile'),
@@ -637,7 +638,7 @@ class FarmerProfileScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _DirectoryTabChip(
-                    label: 'Cultivation',
+                    label: 'Cultivation'.tr,
                     selected: isCultivationTab,
                     onTap: () =>
                         context.go('/engage/farmer/$farmerId?tab=cultivation'),
@@ -685,18 +686,18 @@ class ProfileTab extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 14),
-              InfoPair(label: 'Full Name', value: farmer.name),
+              InfoPair(label: 'Full Name'.tr, value: farmer.name),
               const SizedBox(height: 10),
-              InfoPair(label: 'Mobile Number', value: farmer.phone),
+              InfoPair(label: 'Mobile Number'.tr, value: farmer.phone),
               const SizedBox(height: 10),
-              InfoPair(label: 'Address', value: farmer.location),
+              InfoPair(label: 'Address'.tr, value: farmer.location),
               const SizedBox(height: 10),
               InfoPair(
-                label: 'Total Land',
+                label: 'Total Land'.tr,
                 value: '${farmer.totalLandAcres.toStringAsFixed(1)} acres',
               ),
               const SizedBox(height: 10),
-              InfoPair(label: 'Land Details', value: farmer.landDetails),
+              InfoPair(label: 'Land Details'.tr, value: farmer.landDetails),
               const SizedBox(height: 12),
               FarmerPlotLocationSection(farmer: farmer),
             ],
@@ -750,20 +751,20 @@ class ProfileTab extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
-              InfoPair(label: 'Status', value: settlement.status.label),
+              InfoPair(label: 'Status'.tr, value: settlement.status.label),
               const SizedBox(height: 8),
               InfoPair(
-                label: 'Support Value',
+                label: 'Support Value'.tr,
                 value: currency(settlement.supportValue),
               ),
               const SizedBox(height: 8),
               InfoPair(
-                label: 'Procurement Value',
+                label: 'Procurement Value'.tr,
                 value: currency(settlement.procurementValue),
               ),
               const SizedBox(height: 8),
               InfoPair(
-                label: 'Net Settlement',
+                label: 'Net Settlement'.tr,
                 value: currency(settlement.netSettlement),
               ),
               const SizedBox(height: 12),
@@ -788,7 +789,7 @@ class ProfileTab extends StatelessWidget {
                           : 'Settlement is not ready yet.',
                     );
                   },
-                  child: const Text('Complete Settlement'),
+                  child: Text('Complete Settlement'.tr),
                 ),
               ],
             ],
@@ -876,7 +877,7 @@ class ProfileTab extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               if (procurementHistory.isEmpty)
-                const Text('No procurement records yet.')
+                Text('No procurement records yet.'.tr)
               else
                 ...procurementHistory.map(
                   (item) => Padding(
@@ -917,18 +918,18 @@ class CultivationTab extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               InfoPair(
-                label: 'Nursery Land',
+                label: 'Nursery Land'.tr,
                 value: '${farmer.nurseryLandAcres.toStringAsFixed(1)} acres',
               ),
               const SizedBox(height: 8),
               InfoPair(
-                label: 'Main Crop Land',
+                label: 'Main Crop Land'.tr,
                 value: '${farmer.mainLandAcres.toStringAsFixed(1)} acres',
               ),
               const SizedBox(height: 8),
-              InfoPair(label: 'Crop', value: farmer.crop),
+              InfoPair(label: 'Crop'.tr, value: farmer.crop),
               const SizedBox(height: 8),
-              InfoPair(label: 'Season', value: farmer.season),
+              InfoPair(label: 'Season'.tr, value: farmer.season),
             ],
           ),
         ),
@@ -953,7 +954,7 @@ class CultivationTab extends StatelessWidget {
                 child: TextButton(
                   onPressed: () =>
                       context.go('/crop-plan?farmerId=${farmer.id}'),
-                  child: const Text('Open full crop plan'),
+                  child: Text('Open full crop plan'.tr),
                 ),
               ),
             ],
@@ -1006,12 +1007,12 @@ class FarmerListCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            InfoPair(label: 'Phone', value: farmer.phone),
+            InfoPair(label: 'Phone'.tr, value: farmer.phone),
             const SizedBox(height: 8),
-            InfoPair(label: 'Location', value: farmer.location),
+            InfoPair(label: 'Location'.tr, value: farmer.location),
             const SizedBox(height: 8),
             InfoPair(
-              label: 'Land Area',
+              label: 'Land Area'.tr,
               value: '${farmer.totalLandAcres.toStringAsFixed(1)} acres',
             ),
             const SizedBox(height: 12),
@@ -1232,12 +1233,12 @@ class _SupportRecordTile extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            InfoPair(label: 'Value', value: value),
+            InfoPair(label: 'Value'.tr, value: value),
             const SizedBox(height: 8),
-            InfoPair(label: 'Context', value: record.cropContext),
+            InfoPair(label: 'Context'.tr, value: record.cropContext),
             const SizedBox(height: 8),
             InfoPair(
-              label: 'Reconciliation',
+              label: 'Reconciliation'.tr,
               value: record.finalized ? 'Finalized' : 'In progress',
             ),
           ],
@@ -1282,19 +1283,19 @@ class _ProcurementRecordTile extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             InfoPair(
-              label: 'Harvest Date',
+              label: 'Harvest Date'.tr,
               value: record.selectedHarvestDate == null
                   ? '-'
                   : formatDate(record.selectedHarvestDate!),
             ),
             const SizedBox(height: 8),
             InfoPair(
-              label: 'Final Quantity',
+              label: 'Final Quantity'.tr,
               value:
                   '${(record.finalWeighingQtyKg ?? 0).toStringAsFixed(0)} kg',
             ),
             const SizedBox(height: 8),
-            InfoPair(label: 'Total', value: currency(record.totalAmount)),
+            InfoPair(label: 'Total'.tr, value: currency(record.totalAmount)),
           ],
         ),
       ),
@@ -1368,14 +1369,14 @@ class _StageActionPanel extends StatelessWidget {
           style: filledButtonStyle(),
           onPressed: () =>
               context.go('/support/flow/cash?farmerId=${farmer.id}'),
-          child: const Text('Proceed To Booking'),
+          child: Text('Proceed To Booking'.tr),
         ),
       );
       buttons.add(
         OutlinedButton(
           onPressed: () =>
               context.go('/support/flow/cash?farmerId=${farmer.id}'),
-          child: const Text('Start Cash Advance'),
+          child: Text('Start Cash Advance'.tr),
         ),
       );
     } else {
@@ -1384,20 +1385,20 @@ class _StageActionPanel extends StatelessWidget {
           style: filledButtonStyle(),
           onPressed: () =>
               context.go('/support/flow/kind?farmerId=${farmer.id}'),
-          child: const Text('Give Kind Support'),
+          child: Text('Give Kind Support'.tr),
         ),
       );
       buttons.add(
         OutlinedButton(
           onPressed: () => context.go('/crop-plan?farmerId=${farmer.id}'),
-          child: const Text('Open Crop Plan'),
+          child: Text('Open Crop Plan'.tr),
         ),
       );
       buttons.add(
         OutlinedButton(
           onPressed: () =>
               context.go('/harvest/procurement?farmerId=${farmer.id}'),
-          child: const Text('Start Procurement'),
+          child: Text('Start Procurement'.tr),
         ),
       );
       if (appState.canCompleteSettlement(farmer.id) &&
@@ -1413,7 +1414,7 @@ class _StageActionPanel extends StatelessWidget {
                     : 'Settlement is not ready yet.',
               );
             },
-            child: const Text('Complete Settlement'),
+            child: Text('Complete Settlement'.tr),
           ),
         );
       }

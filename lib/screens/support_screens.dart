@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -17,7 +18,7 @@ class SupportScreen extends StatelessWidget {
     final appState = context.watch<AppState>();
     final lastTransaction = appState.lastSupportTransaction;
     return PageScaffold(
-      title: 'Support',
+      title: 'Support'.tr,
       description: 'Choose the type of support you want to provide.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -26,7 +27,7 @@ class SupportScreen extends StatelessWidget {
             icon: Icons.payments_outlined,
             iconBackground: AppColors.brandGreenLight,
             iconColor: AppColors.brandGreenDark,
-            title: 'Cash Support',
+            title: 'Cash Support'.tr,
             description:
                 'Activate willing farmers through cash advance, code sharing, payment, and OTP acknowledgment.',
             onTap: () => context.go('/support/flow/cash'),
@@ -36,7 +37,7 @@ class SupportScreen extends StatelessWidget {
             icon: Icons.inventory_2_outlined,
             iconBackground: AppColors.brandBlueLight,
             iconColor: AppColors.brandBlue,
-            title: 'Kind Support',
+            title: 'Kind Support'.tr,
             description:
                 'Record backend-fed kind items, quantity, value, and OTP acknowledgment for in-kind delivery.',
             onTap: () => context.go('/support/flow/kind'),
@@ -62,17 +63,17 @@ class SupportScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 InfoPair(
-                  label: 'Total Cash Disbursed',
+                  label: 'Total Cash Disbursed'.tr,
                   value: currency(appState.totalCashSupportValue),
                 ),
                 const SizedBox(height: 8),
                 InfoPair(
-                  label: 'Total Kind Value',
+                  label: 'Total Kind Value'.tr,
                   value: currency(appState.totalKindSupportValue),
                 ),
                 const SizedBox(height: 8),
                 InfoPair(
-                  label: 'OTP Pending',
+                  label: 'OTP Pending'.tr,
                   value: '${appState.otpPendingSupport.length} records',
                 ),
                 if (lastTransaction != null) ...[
@@ -80,7 +81,7 @@ class SupportScreen extends StatelessWidget {
                   const Divider(height: 1),
                   const SizedBox(height: 12),
                   InfoPair(
-                    label: 'Last Transaction',
+                    label: 'Last Transaction'.tr,
                     value: '${lastTransaction.farmerName} • ${lastTransaction.statusLabel}',
                   ),
                   const SizedBox(height: 8),
@@ -90,7 +91,7 @@ class SupportScreen extends StatelessWidget {
                       onPressed: () => context.go(
                         '/engage/farmer/${lastTransaction.farmerId}?tab=profile',
                       ),
-                      child: const Text('View farmer profile'),
+                      child: Text('View farmer profile'.tr),
                     ),
                   ),
                 ],
@@ -249,7 +250,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
       title: widget.type.label,
       showBack: true,
       description: _stepDescription(draft.stepIndex),
-      subtitle: 'STEP ${draft.stepIndex + 1} OF $_totalSteps',
+      subtitle: 'STEP ${draft.stepIndex + 1} OF $_totalSteps'.tr.tr,
       onBack: () {
         if (draft.stepIndex == 0) {
           appState.cancelSupportFlow();
@@ -285,7 +286,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
           if (draft.stepIndex == 0) ...[
             SearchField(
               controller: _searchController,
-              hintText: 'Search farmer name, location...',
+              hintText: 'Search farmer name, location...'.tr,
               onChanged: (value) => setState(() {
                 _searchQuery = value;
               }),
@@ -336,7 +337,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
                   ),
                   const SizedBox(height: 12),
                   DatePickerField(
-                    label: 'Disbursement Date',
+                    label: 'Disbursement Date'.tr,
                     initialDate: draft.disbursementDate,
                     onDateSelected: (date) => appState.updateSupportDraft(
                       draft.copyWith(disbursementDate: date),
@@ -425,11 +426,11 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
                     ),
                     const SizedBox(height: 12),
                     InfoPair(
-                      label: 'Generated Code',
+                      label: 'Generated Code'.tr,
                       value: activeRecord.confirmationCode ?? '-',
                     ),
                     const SizedBox(height: 8),
-                    InfoPair(label: 'Status', value: activeRecord.statusLabel),
+                    InfoPair(label: 'Status'.tr, value: activeRecord.statusLabel),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
@@ -448,7 +449,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
                             }
                           },
                           icon: const Icon(Icons.share_outlined),
-                          label: const Text('Share Code'),
+                          label: Text('Share Code'.tr),
                         ),
                         OutlinedButton.icon(
                           onPressed: () async {
@@ -467,7 +468,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
                             }
                           },
                           icon: const Icon(Icons.sms_outlined),
-                          label: const Text('Send via SMS'),
+                          label: Text('Send via SMS'.tr),
                         ),
                       ],
                     ),
@@ -485,7 +486,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       'Use this step once the cash advance has actually been disbursed to the farmer.',
                     ),
                   ],
@@ -503,7 +504,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
                     ),
                     const SizedBox(height: 12),
                     InfoPair(
-                      label: 'Confirmation Code',
+                      label: 'Confirmation Code'.tr,
                       value: activeRecord.confirmationCode ?? '-',
                     ),
                     const SizedBox(height: 12),
@@ -652,23 +653,23 @@ class SupportSuccessScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InfoPair(label: 'Farmer', value: transaction.farmerName),
+                  InfoPair(label: 'Farmer'.tr, value: transaction.farmerName),
                   const SizedBox(height: 8),
-                  InfoPair(label: 'Status', value: transaction.statusLabel),
+                  InfoPair(label: 'Status'.tr, value: transaction.statusLabel),
                   const SizedBox(height: 8),
                   if (transaction.type == SupportType.cash)
                     InfoPair(
-                      label: 'Cash Amount',
+                      label: 'Cash Amount'.tr,
                       value: currency(transaction.cashAmount ?? 0),
                     )
                   else
                     InfoPair(
-                      label: 'Kind Value',
+                      label: 'Kind Value'.tr,
                       value: currency(transaction.kindValue ?? 0),
                     ),
                   const SizedBox(height: 8),
                   InfoPair(
-                    label: 'Date',
+                    label: 'Date'.tr,
                     value: formatDate(transaction.disbursementDate),
                   ),
                 ],
@@ -679,15 +680,15 @@ class SupportSuccessScreen extends StatelessWidget {
             FilledButton(
               style: filledButtonStyle(),
               onPressed: () => context.go('/engage/farmer/$targetFarmerId?tab=profile'),
-              child: const Padding(
+              child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: Text('View Farmer Profile'),
+                child: Text('View Farmer Profile'.tr),
               ),
             ),
           const SizedBox(height: 10),
           TextButton(
             onPressed: () => context.go('/support'),
-            child: const Text('Return To Support'),
+            child: Text('Return To Support'.tr),
           ),
         ],
       ),
@@ -763,7 +764,7 @@ class _BulletText extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('• '),
+        Text('• '.tr),
         Expanded(
           child: Text(text, style: Theme.of(context).textTheme.bodyLarge),
         ),
@@ -815,12 +816,12 @@ class _SupportFarmerCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            InfoPair(label: 'Phone', value: farmer.phone),
+            InfoPair(label: 'Phone'.tr, value: farmer.phone),
             const SizedBox(height: 8),
-            InfoPair(label: 'Location', value: farmer.location),
+            InfoPair(label: 'Location'.tr, value: farmer.location),
             const SizedBox(height: 8),
             InfoPair(
-              label: 'Land Area',
+              label: 'Land Area'.tr,
               value: '${farmer.totalLandAcres.toStringAsFixed(1)} acres',
             ),
           ],
@@ -878,9 +879,9 @@ class _SupportSummaryCard extends StatelessWidget {
         children: [
           Text('Summary', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          InfoPair(label: 'Farmer', value: record.farmerName),
+          InfoPair(label: 'Farmer'.tr, value: record.farmerName),
           const SizedBox(height: 8),
-          InfoPair(label: 'Context', value: record.cropContext),
+          InfoPair(label: 'Context'.tr, value: record.cropContext),
           const SizedBox(height: 8),
           InfoPair(
             label: record.type == SupportType.cash ? 'Amount' : 'Item',
@@ -891,14 +892,14 @@ class _SupportSummaryCard extends StatelessWidget {
           const SizedBox(height: 8),
           if (record.type == SupportType.kind)
             InfoPair(
-              label: 'Value',
+              label: 'Value'.tr,
               value: currency(record.kindValue ?? 0),
             ),
           if (record.type == SupportType.kind) const SizedBox(height: 8),
-          InfoPair(label: 'Status', value: record.statusLabel),
+          InfoPair(label: 'Status'.tr, value: record.statusLabel),
           const SizedBox(height: 8),
           InfoPair(
-            label: 'Date',
+            label: 'Date'.tr,
             value: formatDate(record.disbursementDate),
           ),
         ],

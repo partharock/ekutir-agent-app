@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -98,7 +99,7 @@ class _EkAcreGrowthAppState extends State<EkAcreGrowthApp> {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'eK Acre Growth',
+      title: 'eK Acre Growth'.tr,
       theme: buildAppTheme(),
       routerConfig: _router,
     );
@@ -359,6 +360,7 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<AppState>();
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
@@ -385,36 +387,36 @@ class AppShell extends StatelessWidget {
               break;
           }
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
-            label: 'Home',
+            label: 'Home'.tr,
           ),
           NavigationDestination(
             icon: Icon(Icons.groups_2_outlined),
             selectedIcon: Icon(Icons.groups_2),
-            label: 'Engage',
+            label: 'Engage'.tr,
           ),
           NavigationDestination(
             icon: Icon(Icons.monetization_on_outlined),
             selectedIcon: Icon(Icons.monetization_on),
-            label: 'Support',
+            label: 'Support'.tr,
           ),
           NavigationDestination(
             icon: Icon(Icons.agriculture_outlined),
             selectedIcon: Icon(Icons.agriculture),
-            label: 'Harvest',
+            label: 'Harvest'.tr,
           ),
           NavigationDestination(
             icon: Icon(Icons.assignment_outlined),
             selectedIcon: Icon(Icons.assignment),
-            label: 'Crop Plan',
+            label: 'Crop Plan'.tr,
           ),
           NavigationDestination(
             icon: Icon(Icons.smart_toy_outlined),
             selectedIcon: Icon(Icons.smart_toy),
-            label: 'MISA AI',
+            label: 'MISA AI'.tr,
           ),
         ],
       ),

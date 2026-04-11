@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -108,7 +109,7 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                       children: [
                         Expanded(
                           child: ChoiceChip(
-                            label: const Text('General'),
+                            label: Text('General'.tr),
                             selected: appState.misaMode == MisaMode.general,
                             onSelected: appState.isMisaLoading
                                 ? null
@@ -118,7 +119,7 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: ChoiceChip(
-                            label: const Text('Farmer-specific'),
+                            label: Text('Farmer-specific'.tr),
                             selected: appState.misaMode == MisaMode.farmer,
                             onSelected: appState.isMisaLoading
                                 ? null
@@ -216,8 +217,8 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                       textInputAction: TextInputAction.send,
                       enabled: !appState.isMisaLoading,
                       onSubmitted: (value) => _submitPrompt(context, value),
-                      decoration: const InputDecoration(
-                        hintText: 'Ask anything...',
+                      decoration: InputDecoration(
+                        hintText: 'Ask anything...'.tr,
                       ),
                     ),
                   ),
@@ -233,7 +234,7 @@ class _MisaAiScreenState extends State<MisaAiScreen> {
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Send'),
+                        : Text('Send'.tr),
                   ),
                 ],
               ),

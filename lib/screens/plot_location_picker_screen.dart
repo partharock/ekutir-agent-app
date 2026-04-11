@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -376,7 +377,7 @@ class _PlotLocationPickerScreenState extends State<PlotLocationPickerScreen> {
     final searchDisabled = mapUnavailableOnWeb || _mapErrorMessage != null;
 
     return PageScaffold(
-      title: 'Plot GPS Location',
+      title: 'Plot GPS Location'.tr,
       showBack: true,
       description:
           'Search a nearby place or move the map until the center pin sits on the farmer plot.',
@@ -437,7 +438,7 @@ class _PlotLocationPickerScreenState extends State<PlotLocationPickerScreen> {
                   onChanged: _onSearchChanged,
                   onSubmitted: _runSearch,
                   decoration: InputDecoration(
-                    hintText: 'Search village, landmark, or address',
+                    hintText: 'Search village, landmark, or address'.tr,
                     prefixIcon: const Icon(
                       Icons.search,
                       size: 20,
@@ -628,12 +629,12 @@ class _PlotLocationPickerScreenState extends State<PlotLocationPickerScreen> {
                 ),
                 const SizedBox(height: 12),
                 InfoPair(
-                  label: 'Latitude',
+                  label: 'Latitude'.tr,
                   value: _selectedTarget.latitude.toStringAsFixed(6),
                 ),
                 const SizedBox(height: 10),
                 InfoPair(
-                  label: 'Longitude',
+                  label: 'Longitude'.tr,
                   value: _selectedTarget.longitude.toStringAsFixed(6),
                 ),
               ],

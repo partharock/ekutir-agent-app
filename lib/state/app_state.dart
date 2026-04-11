@@ -9,6 +9,7 @@ import '../models/support.dart';
 import '../services/device_action_service.dart';
 import '../services/misa_service.dart';
 import '../services/receipt_service.dart';
+import '../utils/translation_service.dart';
 import 'workflow_repository.dart';
 
 enum TaskPriority { high, medium, low }
@@ -87,8 +88,7 @@ class AppState extends ChangeNotifier {
         MisaMessage(
           id: 'misa_welcome',
           author: MisaMessageAuthor.assistant,
-          message:
-              'Hi Ravi, I’m MISA - your Farming Assistant! Ask for today’s priorities, a farmer-specific next step, or settlement readiness.',
+          message: 'Hi Ravi, I’m MISA - your Farming Assistant! Ask for today’s priorities, a farmer-specific next step, or settlement readiness.'.tr,
           timestamp: DateTime(
             seedToday.year,
             seedToday.month,
@@ -123,8 +123,7 @@ class AppState extends ChangeNotifier {
         MisaMessage(
           id: 'misa_welcome',
           author: MisaMessageAuthor.assistant,
-          message:
-              'Hi Ravi, I’m MISA - your Farming Assistant! Ask for today’s priorities, a farmer-specific next step, or settlement readiness.',
+          message: 'Hi Ravi, I’m MISA - your Farming Assistant! Ask for today’s priorities, a farmer-specific next step, or settlement readiness.'.tr,
           timestamp: DateTime(
             seedToday.year,
             seedToday.month,
@@ -149,6 +148,7 @@ class AppState extends ChangeNotifier {
   final List<MisaMessage> _misaMessages;
 
   bool isAuthenticated;
+  String activeLanguage = 'English';
   String? pendingPhoneNumber;
   SupportFlowDraft? supportDraft;
   String? activeProcurementId;
@@ -167,6 +167,14 @@ class AppState extends ChangeNotifier {
 
   List<FarmerProfile> get bookedFarmers =>
       farmers.where((item) => item.status == FarmerStatus.booked).toList();
+
+  void setLanguage(String lang) {
+    if (TranslationService.supportedLanguages.contains(lang)) {
+      activeLanguage = lang;
+      TranslationService.setLanguage(lang);
+      notifyListeners();
+    }
+  }
 
   FarmerProfile farmerById(String id) => repository.farmerById(id);
 
@@ -460,9 +468,8 @@ class AppState extends ChangeNotifier {
       final record = unresolvedSupport.first;
       return TaskItem(
         id: 'support_${record.id}',
-        title: '${record.farmerName} needs support follow-up',
-        subtitle:
-            '${record.type.label} is at ${record.statusLabel.toLowerCase()} status. Continue the exact disbursement step for this farmer.',
+        title: '${record.farmerName} needs support follow-up'.tr,
+        subtitle: '${record.type.label} is at ${record.statusLabel.toLowerCase()} status. Continue the exact disbursement step for this farmer.'.tr.tr,
         priority: TaskPriority.high,
         statusLabel: record.statusLabel,
         actionLabel: 'Continue Support',
@@ -479,9 +486,8 @@ class AppState extends ChangeNotifier {
       final nextStep = record.incompleteSteps.first;
       return TaskItem(
         id: 'procurement_${record.id}',
-        title: '${record.farmerName} has procurement pending',
-        subtitle:
-            '${nextStep.label} is the next incomplete procurement step for this farmer.',
+        title: '${record.farmerName} has procurement pending'.tr,
+        subtitle: '${nextStep.label} is the next incomplete procurement step for this farmer.'.tr.tr,
         priority: TaskPriority.high,
         statusLabel: 'Procurement',
         actionLabel: 'Resume Procurement',
@@ -493,9 +499,8 @@ class AppState extends ChangeNotifier {
     if (_hasHarvestScheduledToday(farmer)) {
       return TaskItem(
         id: 'harvest_${farmer.id}',
-        title: '${farmer.name} is scheduled for harvest today',
-        subtitle:
-            'Open procurement for ${farmer.name} and capture the harvesting details from the crop plan date.',
+        title: '${farmer.name} is scheduled for harvest today'.tr,
+        subtitle: 'Open procurement for ${farmer.name} and capture the harvesting details from the crop plan date.'.tr.tr,
         priority: TaskPriority.medium,
         statusLabel: 'Harvest',
         actionLabel: 'Open Harvest',
@@ -506,9 +511,8 @@ class AppState extends ChangeNotifier {
     if (farmer.status == FarmerStatus.willing) {
       return TaskItem(
         id: 'booking_${farmer.id}',
-        title: '${farmer.name} is waiting for booking',
-        subtitle:
-            'Start cash advance for ${farmer.name}. The farmer becomes booked only after OTP acknowledgment.',
+        title: '${farmer.name} is waiting for booking'.tr,
+        subtitle: 'Start cash advance for ${farmer.name}. The farmer becomes booked only after OTP acknowledgment.'.tr.tr,
         priority: TaskPriority.medium,
         statusLabel: 'Booking',
         actionLabel: 'Start Cash Advance',
@@ -520,9 +524,8 @@ class AppState extends ChangeNotifier {
         settlementPreviewFor(farmer.id).status != SettlementStatus.completed) {
       return TaskItem(
         id: 'settlement_${farmer.id}',
-        title: '${farmer.name} is ready for settlement',
-        subtitle:
-            'All support is acknowledged and procurement has been submitted. Complete reconciliation from the farmer profile.',
+        title: '${farmer.name} is ready for settlement'.tr,
+        subtitle: 'All support is acknowledged and procurement has been submitted. Complete reconciliation from the farmer profile.'.tr.tr,
         priority: TaskPriority.low,
         statusLabel: 'Settlement',
         actionLabel: 'Open Profile',
@@ -629,7 +632,7 @@ class AppState extends ChangeNotifier {
         FarmerTimelineEntry(
           id: settlement.id,
           date: settlement.completedAt ?? today,
-          title: 'Settlement ${settlement.status.label}',
+          title: 'Settlement ${settlement.status.label}'.tr,
           detail: settlement.notes.isEmpty
               ? 'Settlement total recorded as ₹${settlement.netSettlement.toStringAsFixed(0)}.'
               : settlement.notes,
@@ -1163,7 +1166,7 @@ class AppState extends ChangeNotifier {
         MisaMessage(
           id: 'misa_choose_farmer_${now.microsecondsSinceEpoch}',
           author: MisaMessageAuthor.assistant,
-          message: 'Choose a farmer first to get farmer-specific guidance.',
+          message: 'Choose a farmer first to get farmer-specific guidance.'.tr,
           timestamp: now.add(const Duration(seconds: 1)),
         ),
       );
@@ -1359,7 +1362,7 @@ class AppState extends ChangeNotifier {
     addCandidate(
       MisaActionCandidate(
         id: 'profile_${focusFarmer.id}',
-        title: 'Open farmer profile',
+        title: 'Open farmer profile'.tr,
         summary:
             'Review ${focusFarmer.name} in detail, including support, crop plan, procurement, and settlement state.',
         actionLabel: 'Open profile',
@@ -1370,7 +1373,7 @@ class AppState extends ChangeNotifier {
     addCandidate(
       MisaActionCandidate(
         id: 'crop_${focusFarmer.id}',
-        title: 'Open crop plan',
+        title: 'Open crop plan'.tr,
         summary:
             'Review the cultivation checklist and update the next pending field activity for ${focusFarmer.name}.',
         actionLabel: 'Open crop plan',
@@ -1383,7 +1386,7 @@ class AppState extends ChangeNotifier {
       addCandidate(
         MisaActionCandidate(
           id: 'cash_start_${focusFarmer.id}',
-          title: 'Start cash advance',
+          title: 'Start cash advance'.tr,
           summary:
               'Begin booking support for ${focusFarmer.name}. Cash support plus OTP acknowledgement moves the farmer to booked.',
           actionLabel: 'Start Cash Advance',
@@ -1397,7 +1400,7 @@ class AppState extends ChangeNotifier {
       addCandidate(
         MisaActionCandidate(
           id: 'support_${record.id}',
-          title: 'Continue ${record.type.shortLabel.toLowerCase()} support',
+          title: 'Continue ${record.type.shortLabel.toLowerCase()} support'.tr,
           summary:
               '${record.type.label} for ${record.farmerName} is at ${record.statusLabel.toLowerCase()} status and still needs follow-up.',
           actionLabel: 'Continue Support',
@@ -1415,7 +1418,7 @@ class AppState extends ChangeNotifier {
       addCandidate(
         MisaActionCandidate(
           id: 'procurement_${record.id}',
-          title: 'Resume procurement',
+          title: 'Resume procurement'.tr,
           summary:
               '${record.farmerName} has procurement pending, and ${nextStep.label.toLowerCase()} is the next step.',
           actionLabel: 'Resume Procurement',
@@ -1431,7 +1434,7 @@ class AppState extends ChangeNotifier {
       addCandidate(
         MisaActionCandidate(
           id: 'harvest_${focusFarmer.id}',
-          title: 'Open harvest workflow',
+          title: 'Open harvest workflow'.tr,
           summary:
               'Capture harvest and procurement details for ${focusFarmer.name}.',
           actionLabel: 'Open Harvest',
@@ -1447,7 +1450,7 @@ class AppState extends ChangeNotifier {
       addCandidate(
         MisaActionCandidate(
           id: 'settlement_${focusFarmer.id}',
-          title: 'Complete settlement',
+          title: 'Complete settlement'.tr,
           summary:
               '${focusFarmer.name} is ready for reconciliation from the farmer profile.',
           actionLabel: 'Open Profile',
@@ -1536,9 +1539,8 @@ class AppState extends ChangeNotifier {
         orElse: () => farmer,
       );
       return MisaRecommendation(
-        title: 'Harvest next',
-        message:
-            '${target.name} is the best harvest candidate right now. Capture the remaining procurement steps and generate the receipt on the same visit.',
+        title: 'Harvest next'.tr,
+        message: '${target.name} is the best harvest candidate right now. Capture the remaining procurement steps and generate the receipt on the same visit.'.tr,
         actionLabel: 'Open harvest',
         actionRoute: '/harvest/procurement?farmerId=${target.id}',
         farmerId: target.id,
@@ -1553,9 +1555,8 @@ class AppState extends ChangeNotifier {
         orElse: () => activitiesFor(farmer.id).last,
       );
       return MisaRecommendation(
-        title: 'Next cultivation step',
-        message:
-            '${farmer.name} should focus on "${nextActivity.title}" next. Update the crop plan activity once the field action is completed.',
+        title: 'Next cultivation step'.tr,
+        message: '${farmer.name} should focus on "${nextActivity.title}" next. Update the crop plan activity once the field action is completed.'.tr,
         actionLabel: 'Open crop plan',
         actionRoute: '/crop-plan?farmerId=${farmer.id}',
         farmerId: farmer.id,
@@ -1564,9 +1565,8 @@ class AppState extends ChangeNotifier {
 
     final focus = topPriorityFarmer;
     return MisaRecommendation(
-      title: 'Today’s first stop',
-      message:
-          'Visit ${focus.name} first. That farmer has the strongest mix of pending workflow work and field urgency today.',
+      title: 'Today’s first stop'.tr,
+      message: 'Visit ${focus.name} first. That farmer has the strongest mix of pending workflow work and field urgency today.'.tr,
       actionLabel: 'Open profile',
       actionRoute: '/engage/farmer/${focus.id}?tab=profile',
       farmerId: focus.id,

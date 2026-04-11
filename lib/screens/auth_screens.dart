@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -63,9 +64,9 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
                       controller: _controller,
                       keyboardType: TextInputType.phone,
                       onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         prefixText: '+91   ',
-                        hintText: 'Enter your phone number',
+                        hintText: 'Enter your phone number'.tr,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -80,9 +81,9 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
                               context.push('/otp');
                             }
                           : null,
-                      child: const Padding(
+                      child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Text('Send OTP'),
+                        child: Text('Send OTP'.tr),
                       ),
                     ),
                   ],
@@ -229,9 +230,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           });
                         }
                       },
-                      child: const Padding(
+                      child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Text('Submit'),
+                        child: Text('Submit'.tr),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -241,7 +242,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           _error = 'Mock OTP resent. Use any 4 digits.';
                         });
                       },
-                      child: const Text('Resend OTP'),
+                      child: Text('Resend OTP'.tr),
                     ),
                   ],
                 ),

@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -52,12 +53,12 @@ class _CropPlanScreenState extends State<CropPlanScreen> {
     }).toList();
 
     return PageScaffold(
-      title: 'Crop Plan',
+      title: 'Crop Plan'.tr,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SearchField(
-            hintText: 'Search farmer name, location...',
+            hintText: 'Search farmer name, location...'.tr,
             onChanged: (value) => setState(() {
               _query = value;
             }),
@@ -68,7 +69,7 @@ class _CropPlanScreenState extends State<CropPlanScreen> {
             child: Row(
               children: [
                 _StageTab(
-                  label: 'All',
+                  label: 'All'.tr,
                   selected: _filter == _CropPlanFilter.all,
                   onTap: () => setState(() {
                     _filter = _CropPlanFilter.all;
@@ -76,7 +77,7 @@ class _CropPlanScreenState extends State<CropPlanScreen> {
                 ),
                 const SizedBox(width: 10),
                 _StageTab(
-                  label: 'Nursery',
+                  label: 'Nursery'.tr,
                   selected: _filter == _CropPlanFilter.nursery,
                   onTap: () => setState(() {
                     _filter = _CropPlanFilter.nursery;
@@ -84,7 +85,7 @@ class _CropPlanScreenState extends State<CropPlanScreen> {
                 ),
                 const SizedBox(width: 10),
                 _StageTab(
-                  label: 'Growth',
+                  label: 'Growth'.tr,
                   selected: _filter == _CropPlanFilter.growth,
                   onTap: () => setState(() {
                     _filter = _CropPlanFilter.growth;
@@ -92,7 +93,7 @@ class _CropPlanScreenState extends State<CropPlanScreen> {
                 ),
                 const SizedBox(width: 10),
                 _StageTab(
-                  label: 'Harvest',
+                  label: 'Harvest'.tr,
                   selected: _filter == _CropPlanFilter.harvest,
                   onTap: () => setState(() {
                     _filter = _CropPlanFilter.harvest;
@@ -100,7 +101,7 @@ class _CropPlanScreenState extends State<CropPlanScreen> {
                 ),
                 const SizedBox(width: 10),
                 _StageTab(
-                  label: 'Procurement',
+                  label: 'Procurement'.tr,
                   selected: _filter == _CropPlanFilter.procurement,
                   onTap: () => setState(() {
                     _filter = _CropPlanFilter.procurement;
@@ -113,8 +114,8 @@ class _CropPlanScreenState extends State<CropPlanScreen> {
           Text('All Farmers', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 14),
           if (farmers.isEmpty)
-            const EmptyStateCard(
-              message: 'No farmers match the current crop plan filter.',
+            EmptyStateCard(
+              message: 'No farmers match the current crop plan filter.'.tr,
             )
           else
             ...farmers.map(
@@ -188,12 +189,12 @@ class _CropPlanFarmerCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            InfoPair(label: 'Phone', value: farmer.phone),
+            InfoPair(label: 'Phone'.tr, value: farmer.phone),
             const SizedBox(height: 8),
-            InfoPair(label: 'Location', value: farmer.location),
+            InfoPair(label: 'Location'.tr, value: farmer.location),
             const SizedBox(height: 8),
             InfoPair(
-              label: 'Land Area',
+              label: 'Land Area'.tr,
               value: '${farmer.totalLandAcres.toStringAsFixed(1)} acres',
             ),
           ],
@@ -215,7 +216,7 @@ class _FarmerCropPlanDetail extends StatelessWidget {
     final harvestDates = appState.harvestDateOptionsFor(farmer.id);
 
     return PageScaffold(
-      title: 'Farmer Crop Plan',
+      title: 'Farmer Crop Plan'.tr,
       showBack: true,
       onBack: () => context.go('/crop-plan'),
       child: Column(
@@ -227,24 +228,24 @@ class _FarmerCropPlanDetail extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                InfoPair(label: 'Stage', value: farmer.stage.label),
+                InfoPair(label: 'Stage'.tr, value: farmer.stage.label),
                 const SizedBox(height: 10),
-                InfoPair(label: 'Full Name', value: farmer.name),
+                InfoPair(label: 'Full Name'.tr, value: farmer.name),
                 const SizedBox(height: 10),
-                InfoPair(label: 'Mobile Number', value: farmer.phone),
+                InfoPair(label: 'Mobile Number'.tr, value: farmer.phone),
                 const SizedBox(height: 10),
-                InfoPair(label: 'Address', value: farmer.location),
+                InfoPair(label: 'Address'.tr, value: farmer.location),
                 const SizedBox(height: 10),
                 FarmerPlotLocationSection(farmer: farmer),
                 const SizedBox(height: 10),
                 InfoPair(
-                  label: 'Total Land',
+                  label: 'Total Land'.tr,
                   value: '${farmer.totalLandAcres.toStringAsFixed(1)} acres',
                 ),
                 const SizedBox(height: 10),
-                InfoPair(label: 'Season', value: farmer.season),
+                InfoPair(label: 'Season'.tr, value: farmer.season),
                 const SizedBox(height: 10),
-                InfoPair(label: 'Crop', value: farmer.crop),
+                InfoPair(label: 'Crop'.tr, value: farmer.crop),
               ],
             ),
           ),
@@ -261,11 +262,11 @@ class _FarmerCropPlanDetail extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 12),
-                const Text('Nursery Start in progress or completed -> Nursery'),
+                Text('Nursery Start in progress or completed -> Nursery'.tr),
                 const SizedBox(height: 6),
-                const Text('Transplanting completed -> Growth'),
+                Text('Transplanting completed -> Growth'.tr),
                 const SizedBox(height: 6),
-                const Text('Harvest Window Start active -> Harvest'),
+                Text('Harvest Window Start active -> Harvest'.tr),
               ],
             ),
           ),

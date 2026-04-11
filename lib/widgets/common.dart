@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -367,20 +368,20 @@ class FarmerDetailSummary extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          InfoPair(label: 'Farmer ID', value: farmerCode.substring(0, 6)),
+          InfoPair(label: 'Farmer ID'.tr, value: farmerCode.substring(0, 6)),
           const SizedBox(height: 8),
-          InfoPair(label: 'Phone', value: farmer.phone),
+          InfoPair(label: 'Phone'.tr, value: farmer.phone),
           const SizedBox(height: 8),
-          InfoPair(label: 'Address', value: farmer.location),
+          InfoPair(label: 'Address'.tr, value: farmer.location),
           const SizedBox(height: 12),
           FarmerPlotLocationSection(farmer: farmer),
           const SizedBox(height: 8),
           InfoPair(
-            label: 'Land Area',
+            label: 'Land Area'.tr,
             value: '${farmer.totalLandAcres.toStringAsFixed(1)} Acre',
           ),
           const SizedBox(height: 8),
-          InfoPair(label: 'Crop', value: farmer.crop),
+          InfoPair(label: 'Crop'.tr, value: farmer.crop),
         ],
       ),
     );
@@ -437,7 +438,7 @@ class FarmerPlotLocationSection extends StatelessWidget {
                 }
               },
               icon: const Icon(Icons.map_outlined),
-              label: const Text('Open in Map'),
+              label: Text('Open in Map'.tr),
             ),
           ),
         ],

@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
@@ -76,7 +77,7 @@ class PdfReceiptService implements ReceiptService {
                   ),
                 ),
                 pw.SizedBox(height: 8),
-                pw.Text('Farmer-facing proof of harvest and procurement.'),
+                pw.Text('Farmer-facing proof of harvest and procurement.'.tr),
                 pw.SizedBox(height: 24),
                 row('Receipt No', record.receiptNumber ?? 'Pending'),
                 row('Farmer', farmer.name),

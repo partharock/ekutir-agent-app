@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import '../models/support.dart';
 import '../state/app_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common.dart';
+import '../widgets/language_selector.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -46,7 +48,7 @@ class HomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Welcome back.',
+                          'Welcome back.'.tr,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         Text(
@@ -57,11 +59,13 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => showMockSnackBar(
-                      context,
-                      'Notifications are not configured in this build.',
-                    ),
-                    icon: const Icon(Icons.notifications_outlined),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const LanguageSelectorDialog(),
+                      );
+                    },
+                    icon: const Icon(Icons.settings),
                   ),
                 ],
               ),
@@ -77,62 +81,62 @@ class HomeScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 14),
-                    InfoPair(label: 'Crop', value: appState.agentCrop),
+                    InfoPair(label: 'Crop'.tr, value: appState.agentCrop),
                     const SizedBox(height: 10),
                     InfoPair(
-                      label: 'Current Season',
+                      label: 'Current Season'.tr,
                       value: appState.currentSeason,
                     ),
                     const SizedBox(height: 10),
-                    InfoPair(label: 'Status', value: appState.agentStatus),
+                    InfoPair(label: 'Status'.tr, value: appState.agentStatus),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
-              Text('Snapshot', style: Theme.of(context).textTheme.titleLarge),
+              Text('Snapshot'.tr, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 14),
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
                 children: [
                   MetricCard(
-                    title: 'TOTAL LAND',
+                    title: 'TOTAL LAND'.tr,
                     value: appState.totalLandAcres.toStringAsFixed(0),
-                    suffix: 'Acres',
+                    suffix: 'Acres'.tr,
                     icon: Icons.crop_square_outlined,
                   ),
                   MetricCard(
-                    title: 'TASKS TODAY',
+                    title: 'TASKS TODAY'.tr,
                     value: '${appState.tasksToday}',
                     icon: Icons.rule_folder_outlined,
                   ),
                   MetricCard(
-                    title: 'WILLING',
+                    title: 'WILLING'.tr,
                     value: '${appState.willingCount}',
                     icon: Icons.local_offer_outlined,
                   ),
                   MetricCard(
-                    title: 'BOOKED',
+                    title: 'BOOKED'.tr,
                     value: '${appState.bookedCount}',
                     icon: Icons.event_available_outlined,
                   ),
                   MetricCard(
-                    title: 'GROWTH',
+                    title: 'GROWTH'.tr,
                     value: '${appState.growthCount}',
                     icon: Icons.grass_outlined,
                   ),
                   MetricCard(
-                    title: 'HARVEST',
+                    title: 'HARVEST'.tr,
                     value: '${appState.harvestCount}',
                     icon: Icons.agriculture_outlined,
                   ),
                   MetricCard(
-                    title: 'PROCUREMENT',
+                    title: 'PROCUREMENT'.tr,
                     value: '${appState.procurementCount}',
                     icon: Icons.local_shipping_outlined,
                   ),
                   MetricCard(
-                    title: 'SETTLEMENT',
+                    title: 'SETTLEMENT'.tr,
                     value: '${appState.settlementCount}',
                     icon: Icons.task_alt_outlined,
                   ),
@@ -145,8 +149,8 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               if (appState.homeTasks.isEmpty)
-                const EmptyStateCard(
-                  message: 'No urgent workflow items are pending today.',
+                EmptyStateCard(
+                  message: 'No urgent workflow items are pending today.'.tr,
                 )
               else
                 ...appState.homeTasks.map(
@@ -191,7 +195,7 @@ class HomeScreen extends StatelessWidget {
                           const SizedBox(height: 10),
                           TextButton(
                             onPressed: () => context.go('/misa-ai'),
-                            child: const Text('Open assistant'),
+                            child: Text('Open assistant'.tr),
                           ),
                         ],
                       ),
@@ -359,16 +363,16 @@ class FarmerTrackerCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          InfoPair(label: 'Location', value: farmer.location),
+          InfoPair(label: 'Location'.tr, value: farmer.location),
           const SizedBox(height: 8),
-          InfoPair(label: 'Cash', value: appState.farmerTrackerSupportLabel(farmer.id, SupportType.cash)),
+          InfoPair(label: 'Cash'.tr, value: appState.farmerTrackerSupportLabel(farmer.id, SupportType.cash)),
           const SizedBox(height: 8),
-          InfoPair(label: 'Kind', value: appState.farmerTrackerSupportLabel(farmer.id, SupportType.kind)),
+          InfoPair(label: 'Kind'.tr, value: appState.farmerTrackerSupportLabel(farmer.id, SupportType.kind)),
           const SizedBox(height: 8),
-          InfoPair(label: 'Procurement', value: appState.farmerTrackerProcurementLabel(farmer.id)),
+          InfoPair(label: 'Procurement'.tr, value: appState.farmerTrackerProcurementLabel(farmer.id)),
           if (nextTask != null) ...[
             const SizedBox(height: 8),
-            InfoPair(label: 'Next Action', value: nextTask.title),
+            InfoPair(label: 'Next Action'.tr, value: nextTask.title),
           ],
           if (procurementSteps.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -399,7 +403,7 @@ class FarmerTrackerCard extends StatelessWidget {
                 ),
               OutlinedButton(
                 onPressed: () => context.go('/engage/farmer/${farmer.id}?tab=profile'),
-                child: const Text('View Profile'),
+                child: Text('View Profile'.tr),
               ),
             ],
           ),

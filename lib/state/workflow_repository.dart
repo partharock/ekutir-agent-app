@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -75,7 +76,7 @@ List<CropPlanActivity> buildCropPlanActivities({
     CropPlanActivity(
       id: '${farmerId}_n1',
       type: CropActivityType.nurseryStart,
-      title: 'Nursery Start',
+      title: 'Nursery Start'.tr,
       plannedDate: seedToday.subtract(const Duration(days: 18)),
       detail: 'Prepare nursery bed and arrange saplings.',
       status: statusFor(CropActivityType.nurseryStart),
@@ -83,7 +84,7 @@ List<CropPlanActivity> buildCropPlanActivities({
     CropPlanActivity(
       id: '${farmerId}_t1',
       type: CropActivityType.transplanting,
-      title: 'Transplanting',
+      title: 'Transplanting'.tr,
       plannedDate: seedToday.subtract(const Duration(days: 8)),
       detail: 'Move nursery plants to the main field.',
       status: statusFor(CropActivityType.transplanting),
@@ -91,7 +92,7 @@ List<CropPlanActivity> buildCropPlanActivities({
     CropPlanActivity(
       id: '${farmerId}_g1',
       type: CropActivityType.growthMonitoring,
-      title: 'Growth Monitoring Visit',
+      title: 'Growth Monitoring Visit'.tr,
       plannedDate: seedToday.subtract(const Duration(days: 2)),
       detail: 'Review crop health and water levels.',
       status: statusFor(CropActivityType.growthMonitoring),
@@ -99,7 +100,7 @@ List<CropPlanActivity> buildCropPlanActivities({
     CropPlanActivity(
       id: '${farmerId}_i1',
       type: CropActivityType.inputApplication,
-      title: 'Input Application',
+      title: 'Input Application'.tr,
       plannedDate: seedToday.add(const Duration(days: 1)),
       detail: 'Apply the recommended input package.',
       status: statusFor(CropActivityType.inputApplication),
@@ -107,7 +108,7 @@ List<CropPlanActivity> buildCropPlanActivities({
     CropPlanActivity(
       id: '${farmerId}_h1',
       type: CropActivityType.harvestWindowStart,
-      title: 'Harvest Window Start',
+      title: 'Harvest Window Start'.tr,
       plannedDate: stage == FarmerStage.harvest
           ? seedToday
           : seedToday.add(const Duration(days: 3)),
@@ -117,7 +118,7 @@ List<CropPlanActivity> buildCropPlanActivities({
     CropPlanActivity(
       id: '${farmerId}_h2',
       type: CropActivityType.harvestWindowEnd,
-      title: 'Harvest Window End',
+      title: 'Harvest Window End'.tr,
       plannedDate: seedToday.add(const Duration(days: 7)),
       detail: 'Complete harvest before this date to preserve quality.',
       status: statusFor(CropActivityType.harvestWindowEnd),

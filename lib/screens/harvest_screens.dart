@@ -1,3 +1,4 @@
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -27,12 +28,12 @@ class _HarvestHubScreenState extends State<HarvestHubScreen> {
     );
 
     return PageScaffold(
-      title: 'Harvesting & Procurement',
+      title: 'Harvesting & Procurement'.tr,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SearchField(
-            hintText: 'Search farmer name, location...',
+            hintText: 'Search farmer name, location...'.tr,
             onChanged: (value) => setState(() {
               _query = value;
             }),
@@ -144,11 +145,11 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
     final appState = context.watch<AppState>();
     final record = appState.activeProcurementRecord;
     if (record == null) {
-      return const PageScaffold(
-        title: 'Procurement',
+      return PageScaffold(
+        title: 'Procurement'.tr,
         showBack: true,
         child: EmptyStateCard(
-          message: 'Select a farmer from Harvest to start procurement.',
+          message: 'Select a farmer from Harvest to start procurement.'.tr,
         ),
       );
     }
@@ -157,7 +158,7 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
     final step = ProcurementStep.values[appState.procurementStepIndex];
 
     return PageScaffold(
-      title: 'Procurement',
+      title: 'Procurement'.tr,
       showBack: true,
       onBack: () {
         if (appState.procurementStepIndex == 0) {
@@ -328,7 +329,7 @@ class ProcurementSuccessScreen extends StatelessWidget {
         : appState.repository.procurementById(recordId!);
 
     return PageScaffold(
-      title: 'Procurement',
+      title: 'Procurement'.tr,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -349,20 +350,20 @@ class ProcurementSuccessScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InfoPair(label: 'Farmer', value: record.farmerName),
+                  InfoPair(label: 'Farmer'.tr, value: record.farmerName),
                   const SizedBox(height: 8),
                   InfoPair(
-                    label: 'Receipt',
+                    label: 'Receipt'.tr,
                     value: record.receiptNumber ?? 'Pending',
                   ),
                   const SizedBox(height: 8),
                   InfoPair(
-                    label: 'Final Quantity',
+                    label: 'Final Quantity'.tr,
                     value: '${(record.finalWeighingQtyKg ?? 0).toStringAsFixed(0)} kg',
                   ),
                   const SizedBox(height: 8),
                   InfoPair(
-                    label: 'Total',
+                    label: 'Total'.tr,
                     value: currency(record.totalAmount),
                   ),
                 ],
@@ -377,7 +378,7 @@ class ProcurementSuccessScreen extends StatelessWidget {
                 FilledButton(
                   style: filledButtonStyle(),
                   onPressed: () => context.go('/engage/farmer/${record.farmerId}?tab=profile'),
-                  child: const Text('Open Farmer Profile'),
+                  child: Text('Open Farmer Profile'.tr),
                 ),
                 OutlinedButton.icon(
                   onPressed: () async {
@@ -390,7 +391,7 @@ class ProcurementSuccessScreen extends StatelessWidget {
                     }
                   },
                   icon: const Icon(Icons.share_outlined),
-                  label: const Text('Share Receipt'),
+                  label: Text('Share Receipt'.tr),
                 ),
                 OutlinedButton.icon(
                   onPressed: () async {
@@ -403,7 +404,7 @@ class ProcurementSuccessScreen extends StatelessWidget {
                     }
                   },
                   icon: const Icon(Icons.print_outlined),
-                  label: const Text('Print Receipt'),
+                  label: Text('Print Receipt'.tr),
                 ),
               ],
             ),
@@ -449,19 +450,19 @@ class _ProcurementFarmerCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          InfoPair(label: 'Phone', value: farmer.phone),
+          InfoPair(label: 'Phone'.tr, value: farmer.phone),
           const SizedBox(height: 8),
-          InfoPair(label: 'Location', value: farmer.location),
+          InfoPair(label: 'Location'.tr, value: farmer.location),
           const SizedBox(height: 8),
           InfoPair(
-            label: 'Harvest Dates',
+            label: 'Harvest Dates'.tr,
             value: harvestDates.isEmpty
                 ? 'No dates in crop plan'
                 : harvestDates.map(formatDate).join(', '),
           ),
           const SizedBox(height: 8),
           InfoPair(
-            label: 'Procurement Status',
+            label: 'Procurement Status'.tr,
             value: procurement == null
                 ? 'Not started'
                 : procurement.submitted
@@ -531,7 +532,7 @@ class _HarvestingStep extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           TimePickerField(
-            label: 'Time of Harvesting',
+            label: 'Time of Harvesting'.tr,
             initialTime: record.harvestingTime,
             onTimeSelected: (value) =>
                 appState.updateProcurementDraft(record.copyWith(harvestingTime: value)),
@@ -567,7 +568,7 @@ class _PackagingStep extends StatelessWidget {
           Text('Packaging Details', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 14),
           DatePickerField(
-            label: 'Packaging Date',
+            label: 'Packaging Date'.tr,
             initialDate: record.packagingDate ?? appState.today,
             onDateSelected: (date) =>
                 appState.updateProcurementDraft(record.copyWith(packagingDate: date)),
@@ -603,7 +604,7 @@ class _WeighingStep extends StatelessWidget {
               Text('Weighing Details', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 14),
               DatePickerField(
-                label: 'Weighing Date',
+                label: 'Weighing Date'.tr,
                 initialDate: record.weighingDate ?? appState.today,
                 onDateSelected: (date) =>
                     appState.updateProcurementDraft(record.copyWith(weighingDate: date)),
@@ -635,12 +636,12 @@ class _WeighingStep extends StatelessWidget {
               Text('Quantity Comparison', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               InfoPair(
-                label: 'Harvested Qty',
+                label: 'Harvested Qty'.tr,
                 value: '${(record.quantityHarvestedKg ?? 0).toStringAsFixed(0)} kg',
               ),
               const SizedBox(height: 8),
               InfoPair(
-                label: 'Final Weighed Qty',
+                label: 'Final Weighed Qty'.tr,
                 value: '${(record.finalWeighingQtyKg ?? 0).toStringAsFixed(0)} kg',
               ),
             ],
@@ -677,9 +678,9 @@ class _PriceStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          InfoPair(label: 'Quantity', value: '${qty.toStringAsFixed(0)} kg'),
+          InfoPair(label: 'Quantity'.tr, value: '${qty.toStringAsFixed(0)} kg'),
           const SizedBox(height: 8),
-          InfoPair(label: 'Total Amount', value: currency(qty * rate)),
+          InfoPair(label: 'Total Amount'.tr, value: currency(qty * rate)),
         ],
       ),
     );
@@ -704,16 +705,16 @@ class _ReceiptStep extends StatelessWidget {
             children: [
               Text('Receipt Preview', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 14),
-              InfoPair(label: 'Receipt No', value: record.receiptNumber ?? 'Pending'),
+              InfoPair(label: 'Receipt No'.tr, value: record.receiptNumber ?? 'Pending'),
               const SizedBox(height: 8),
               InfoPair(
-                label: 'Quantity',
+                label: 'Quantity'.tr,
                 value: '${(record.finalWeighingQtyKg ?? 0).toStringAsFixed(0)} kg',
               ),
               const SizedBox(height: 8),
-              InfoPair(label: 'Rate per kg', value: currency(record.ratePerKg)),
+              InfoPair(label: 'Rate per kg'.tr, value: currency(record.ratePerKg)),
               const SizedBox(height: 8),
-              InfoPair(label: 'Total Amount', value: currency(record.totalAmount)),
+              InfoPair(label: 'Total Amount'.tr, value: currency(record.totalAmount)),
               const SizedBox(height: 12),
               TextField(
                 controller: parent._receiptMessageController,
@@ -746,7 +747,7 @@ class _ReceiptStep extends StatelessWidget {
                 }
               },
               icon: const Icon(Icons.share_outlined),
-              label: const Text('Share Receipt'),
+              label: Text('Share Receipt'.tr),
             ),
             OutlinedButton.icon(
               onPressed: () async {
@@ -766,7 +767,7 @@ class _ReceiptStep extends StatelessWidget {
                 }
               },
               icon: const Icon(Icons.print_outlined),
-              label: const Text('Print Receipt'),
+              label: Text('Print Receipt'.tr),
             ),
           ],
         ),
@@ -791,7 +792,7 @@ class _TransportStep extends StatelessWidget {
           Text('Transport Details', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 14),
           DatePickerField(
-            label: 'Transport Date',
+            label: 'Transport Date'.tr,
             initialDate: record.transportDate ?? appState.today,
             onDateSelected: (date) =>
                 appState.updateProcurementDraft(record.copyWith(transportDate: date)),
