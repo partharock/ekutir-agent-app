@@ -3,6 +3,57 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
+enum FarmerType { individual, group }
+
+extension FarmerTypeX on FarmerType {
+  String get label {
+    switch (this) {
+      case FarmerType.individual:
+        return 'Individual';
+      case FarmerType.group:
+        return 'Group';
+    }
+  }
+}
+
+class BankDetails {
+  const BankDetails({
+    this.accountHolderName = '',
+    this.bankName = '',
+    this.accountNumber = '',
+    this.ifscCode = '',
+    this.upiId = '',
+  });
+
+  final String accountHolderName;
+  final String bankName;
+  final String accountNumber;
+  final String ifscCode;
+  final String upiId;
+
+  bool get isEmpty =>
+      accountHolderName.isEmpty &&
+      bankName.isEmpty &&
+      accountNumber.isEmpty &&
+      ifscCode.isEmpty;
+
+  BankDetails copyWith({
+    String? accountHolderName,
+    String? bankName,
+    String? accountNumber,
+    String? ifscCode,
+    String? upiId,
+  }) {
+    return BankDetails(
+      accountHolderName: accountHolderName ?? this.accountHolderName,
+      bankName: bankName ?? this.bankName,
+      accountNumber: accountNumber ?? this.accountNumber,
+      ifscCode: ifscCode ?? this.ifscCode,
+      upiId: upiId ?? this.upiId,
+    );
+  }
+}
+
 enum FarmerStatus { willing, booked }
 
 enum FarmerStage {
@@ -168,6 +219,12 @@ class FarmerProfile {
     required this.mainLandAcres,
     required this.landDetails,
     required this.supportPreview,
+    this.farmerType = FarmerType.individual,
+    this.groupName,
+    this.groupMembers,
+    this.aadharNumber,
+    this.bankDetails,
+    this.uniqueId,
   });
 
   final String id;
@@ -184,6 +241,12 @@ class FarmerProfile {
   final double mainLandAcres;
   final String landDetails;
   final Map<String, String> supportPreview;
+  final FarmerType farmerType;
+  final String? groupName;
+  final int? groupMembers;
+  final String? aadharNumber;
+  final BankDetails? bankDetails;
+  final String? uniqueId;
 
   FarmerProfile copyWith({
     String? id,
@@ -200,6 +263,12 @@ class FarmerProfile {
     double? mainLandAcres,
     String? landDetails,
     Map<String, String>? supportPreview,
+    FarmerType? farmerType,
+    String? groupName,
+    int? groupMembers,
+    String? aadharNumber,
+    BankDetails? bankDetails,
+    String? uniqueId,
   }) {
     return FarmerProfile(
       id: id ?? this.id,
@@ -216,6 +285,12 @@ class FarmerProfile {
       mainLandAcres: mainLandAcres ?? this.mainLandAcres,
       landDetails: landDetails ?? this.landDetails,
       supportPreview: supportPreview ?? this.supportPreview,
+      farmerType: farmerType ?? this.farmerType,
+      groupName: groupName ?? this.groupName,
+      groupMembers: groupMembers ?? this.groupMembers,
+      aadharNumber: aadharNumber ?? this.aadharNumber,
+      bankDetails: bankDetails ?? this.bankDetails,
+      uniqueId: uniqueId ?? this.uniqueId,
     );
   }
 }
@@ -232,6 +307,11 @@ class NewFarmerDraft {
     required this.totalLandAcres,
     required this.nurseryLandAcres,
     required this.mainLandAcres,
+    this.farmerType = FarmerType.individual,
+    this.groupName,
+    this.groupMembers,
+    this.aadharNumber,
+    this.bankDetails,
   });
 
   final String name;
@@ -244,6 +324,11 @@ class NewFarmerDraft {
   final double totalLandAcres;
   final double nurseryLandAcres;
   final double mainLandAcres;
+  final FarmerType farmerType;
+  final String? groupName;
+  final int? groupMembers;
+  final String? aadharNumber;
+  final BankDetails? bankDetails;
 
   NewFarmerDraft copyWith({
     String? name,
@@ -256,6 +341,11 @@ class NewFarmerDraft {
     double? totalLandAcres,
     double? nurseryLandAcres,
     double? mainLandAcres,
+    FarmerType? farmerType,
+    String? groupName,
+    int? groupMembers,
+    String? aadharNumber,
+    BankDetails? bankDetails,
   }) {
     return NewFarmerDraft(
       name: name ?? this.name,
@@ -268,6 +358,11 @@ class NewFarmerDraft {
       totalLandAcres: totalLandAcres ?? this.totalLandAcres,
       nurseryLandAcres: nurseryLandAcres ?? this.nurseryLandAcres,
       mainLandAcres: mainLandAcres ?? this.mainLandAcres,
+      farmerType: farmerType ?? this.farmerType,
+      groupName: groupName ?? this.groupName,
+      groupMembers: groupMembers ?? this.groupMembers,
+      aadharNumber: aadharNumber ?? this.aadharNumber,
+      bankDetails: bankDetails ?? this.bankDetails,
     );
   }
 }

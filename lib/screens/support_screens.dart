@@ -101,7 +101,7 @@ class SupportScreen extends StatelessWidget {
           if (appState.otpPendingSupport.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text(
-              'OTP Follow-up',
+              'Awaiting Head Office OTP',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
@@ -124,8 +124,79 @@ class SupportScreen extends StatelessWidget {
               ),
             ),
           ],
+          const SizedBox(height: 24),
+          const _SupportHistory(),
         ],
       ),
+    );
+  }
+}
+
+class _SupportHistory extends StatefulWidget {
+  const _SupportHistory();
+
+  @override
+  State<_SupportHistory> createState() => _SupportHistoryState();
+}
+
+class _SupportHistoryState extends State<_SupportHistory> {
+  SupportType _selectedType = SupportType.cash;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final historyRecords = appState.finalizedSupport
+        .where((record) => record.type == _selectedType)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'History',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        SegmentedButton<SupportType>(
+          segments: const [
+            ButtonSegment(
+              value: SupportType.cash,
+              label: Text('Cash History'),
+            ),
+            ButtonSegment(
+              value: SupportType.kind,
+              label: Text('Kind History'),
+            ),
+          ],
+          selected: {_selectedType},
+          onSelectionChanged: (set) {
+            setState(() => _selectedType = set.first);
+          },
+        ),
+        const SizedBox(height: 16),
+        if (historyRecords.isEmpty)
+          const Text('No finalized records found.')
+        else
+          ...historyRecords.take(5).map(
+                (record) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: SectionCard(
+                    useInnerPadding: false,
+                    child: ListTile(
+                      title: Text(record.farmerName),
+                      subtitle: Text(
+                        '${record.statusLabel} • ${record.updatedAt.toString().split(' ')[0]}',
+                      ),
+                      trailing: Text(
+                        record.type == SupportType.cash
+                            ? currency(record.cashAmount ?? 0)
+                            : (record.itemName ?? ''),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+      ],
     );
   }
 }
@@ -194,7 +265,7 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
     super.dispose();
   }
 
-  int get _totalSteps => widget.type == SupportType.cash ? 5 : 3;
+  int get _totalSteps => 4;
 
   void _syncControllers(SupportFlowDraft draft) {
     final syncKey = '${draft.recordId}|${draft.farmerId}|${draft.stepIndex}';
@@ -213,23 +284,11 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
   }
 
   String _stepDescription(int step) {
-    if (step == 0) {
-      return 'Select a farmer to continue.'.tr;
-    }
-    if (step == 1) {
-      return 'Capture support details before generating the confirmation code.'.tr;
-    }
-    if (widget.type == SupportType.cash) {
-      switch (step) {
-        case 2:
-          return 'Generate and share the confirmation code, then mark as received.';
-        case 3:
-          return 'Mark the cash advance as paid.';
-        case 4:
-          return 'Verify OTP to reach Acknowledged and book the farmer.';
-      }
-    }
-    return 'Verify OTP to complete the kind support delivery.';
+    if (step == 0) return 'Select a farmer to continue.'.tr;
+    if (step == 1) return 'Capture support details before confirming submission.'.tr;
+    if (step == 2) return 'Submit details to the head office for verification.'.tr;
+    if (step == 3) return 'Verify using the OTP received from the head office.'.tr;
+    return '';
   }
 
   @override
@@ -415,104 +474,38 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
             const SizedBox(height: 18),
             _SupportSummaryCard(record: activeRecord),
             const SizedBox(height: 16),
-            if (draft.stepIndex == 2 && widget.type == SupportType.cash) ...[
+            if (draft.stepIndex == 2) ...[
               SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Confirmation Code',
+                      'Ready for Submission',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 12),
-                    InfoPair(
-                      label: 'Generated Code'.tr,
-                      value: activeRecord.confirmationCode ?? '-',
-                    ),
-                    const SizedBox(height: 8),
-                    InfoPair(label: 'Status'.tr, value: activeRecord.statusLabel),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final success = await appState.shareSupportCode();
-                            if (context.mounted) {
-                              showMockSnackBar(
-                                context,
-                                success
-                                    ? 'Confirmation code shared.'
-                                    : 'Unable to share confirmation code.',
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.share_outlined),
-                          label: Text('Share Code'.tr),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final success = await appState.messageFarmer(
-                              selectedFarmer.id,
-                              body:
-                                  'Your eK Acre confirmation code is ${activeRecord.confirmationCode}.',
-                            );
-                            if (context.mounted) {
-                              showMockSnackBar(
-                                context,
-                                success
-                                    ? 'Message app opened.'
-                                    : 'Unable to open messaging app.',
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.sms_outlined),
-                          label: Text('Send via SMS'.tr),
-                        ),
-                      ],
+                    Text(
+                      'Review the details above. Submitting will send the record to the head office, and they will SMS an OTP to your registered mobile number.',
                     ),
                   ],
                 ),
               ),
             ],
-            if (draft.stepIndex == 3 && widget.type == SupportType.cash)
+            if (draft.stepIndex == 3)
               SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Payment Confirmation',
+                      'Head Office Authorization',
                       style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Use this step once the cash advance has actually been disbursed to the farmer.',
-                    ),
-                  ],
-                ),
-              ),
-            if ((draft.stepIndex == 4 && widget.type == SupportType.cash) ||
-                (draft.stepIndex == 2 && widget.type == SupportType.kind))
-              SectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'OTP Verification',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    InfoPair(
-                      label: 'Confirmation Code'.tr,
-                      value: activeRecord.confirmationCode ?? '-',
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _otpController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Enter 4-digit OTP',
+                        labelText: 'Enter Head Office OTP',
                       ),
                       onChanged: (value) => appState.updateSupportDraft(
                         draft.copyWith(otpInput: value),
@@ -528,23 +521,11 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
   }
 
   String _primaryButtonLabel(int step) {
-    if (step == 0) {
-      return 'Select Farmer';
-    }
-    if (step == 1) {
-      return 'Generate Confirmation Code';
-    }
-    if (widget.type == SupportType.cash) {
-      switch (step) {
-        case 2:
-          return 'Mark Received';
-        case 3:
-          return 'Mark Paid';
-        case 4:
-          return 'Verify OTP';
-      }
-    }
-    return 'Verify OTP';
+    if (step == 0) return 'Select Farmer';
+    if (step == 1) return 'Capture Details';
+    if (step == 2) return 'Submit to Head Office';
+    if (step == 3) return 'Verify OTP';
+    return 'Continue';
   }
 
   void _handlePrimaryAction(
@@ -587,18 +568,10 @@ class _SupportFlowScreenState extends State<SupportFlowScreen> {
       return;
     }
 
-    if (widget.type == SupportType.cash && draft.stepIndex == 2) {
-      final success = appState.markCashSupportReceived();
+    if (draft.stepIndex == 2) {
+      final success = appState.submitSupportToHeadOffice();
       if (!success) {
-        showMockSnackBar(context, 'Unable to move to Received.');
-      }
-      return;
-    }
-
-    if (widget.type == SupportType.cash && draft.stepIndex == 3) {
-      final success = appState.markCashSupportPaid();
-      if (!success) {
-        showMockSnackBar(context, 'Unable to mark cash as paid.');
+        showMockSnackBar(context, 'Unable to submit to head office.');
       }
       return;
     }

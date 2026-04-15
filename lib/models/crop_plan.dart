@@ -64,3 +64,55 @@ class CropPlanActivity {
     );
   }
 }
+
+enum AlertSeverity { low, medium, high }
+
+extension AlertSeverityX on AlertSeverity {
+  String get label {
+    switch (this) {
+      case AlertSeverity.low: return 'Low'.tr;
+      case AlertSeverity.medium: return 'Medium'.tr;
+      case AlertSeverity.high: return 'High'.tr;
+    }
+  }
+}
+
+class FieldIssueAlert {
+  const FieldIssueAlert({
+    required this.id,
+    required this.farmerId,
+    required this.description,
+    required this.severity,
+    this.photoPath,
+    required this.reportedAt,
+    this.resolved = false,
+  });
+
+  final String id;
+  final String farmerId;
+  final String description;
+  final AlertSeverity severity;
+  final String? photoPath; // optional local UI path, e.g. from image_picker
+  final DateTime reportedAt;
+  final bool resolved;
+
+  FieldIssueAlert copyWith({
+    String? id,
+    String? farmerId,
+    String? description,
+    AlertSeverity? severity,
+    String? photoPath,
+    DateTime? reportedAt,
+    bool? resolved,
+  }) {
+    return FieldIssueAlert(
+      id: id ?? this.id,
+      farmerId: farmerId ?? this.farmerId,
+      description: description ?? this.description,
+      severity: severity ?? this.severity,
+      photoPath: photoPath ?? this.photoPath,
+      reportedAt: reportedAt ?? this.reportedAt,
+      resolved: resolved ?? this.resolved,
+    );
+  }
+}

@@ -47,14 +47,13 @@
         return;
       }
 
-      const script = document.createElement("script");
-      script.src =
+      const url =
         "https://sdk.mappls.com/map/sdk/web?v=" +
         encodeURIComponent(sdkVersion) +
         "&access_token=" +
         encodeURIComponent(key);
-      script.async = false;
-      document.head.appendChild(script);
+      
+      document.write('<script src="' + url + '"><\/script>');
     })();
   </script>
   <style>

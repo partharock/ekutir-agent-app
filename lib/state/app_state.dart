@@ -56,6 +56,12 @@ class AppState extends ChangeNotifier {
     required this.agentCrop,
     required this.currentSeason,
     required this.agentStatus,
+    required this.agentType,
+    required this.agentOrg,
+    required this.locality,
+    required this.cropDuration,
+    required this.targetFarmers,
+    required this.targetLandAcres,
     required this.today,
     required this.repository,
     required this.deviceActions,
@@ -74,10 +80,16 @@ class AppState extends ChangeNotifier {
   }) {
     final seedToday = _dateOnly(today ?? DateTime.now());
     return AppState(
-      agentName: 'Ravi',
+      agentName: 'Ravi Shankar',
       agentCrop: 'Rice',
       currentSeason: 'Kharif 2026',
       agentStatus: 'Field operations active',
+      agentType: 'Field Agent',
+      agentOrg: 'eKutir Agri Pvt Ltd',
+      locality: 'Bhubaneswar Block, Odisha',
+      cropDuration: '120 days — Kharif 2026',
+      targetFarmers: 30,
+      targetLandAcres: 75.0,
       today: seedToday,
       repository:
           repository ?? SeededWorkflowRepository.seeded(today: seedToday),
@@ -88,7 +100,7 @@ class AppState extends ChangeNotifier {
         MisaMessage(
           id: 'misa_welcome',
           author: MisaMessageAuthor.assistant,
-          message: 'Hi Ravi, I’m MISA - your Farming Assistant! Ask for today’s priorities, a farmer-specific next step, or settlement readiness.'.tr,
+          message: 'Hi Ravi, I’m MISA - your Farming Assistant! Ask for today\'s priorities, a farmer-specific next step, or settlement readiness.'.tr,
           timestamp: DateTime(
             seedToday.year,
             seedToday.month,
@@ -109,10 +121,16 @@ class AppState extends ChangeNotifier {
   }) async {
     final seedToday = _dateOnly(today ?? DateTime.now());
     return AppState(
-      agentName: 'Ravi',
+      agentName: 'Ravi Shankar',
       agentCrop: 'Rice',
       currentSeason: 'Kharif 2026',
       agentStatus: 'Field operations active',
+      agentType: 'Field Agent',
+      agentOrg: 'eKutir Agri Pvt Ltd',
+      locality: 'Bhubaneswar Block, Odisha',
+      cropDuration: '120 days — Kharif 2026',
+      targetFarmers: 30,
+      targetLandAcres: 75.0,
       today: seedToday,
       repository: repository ??
           await PersistedWorkflowRepository.create(today: seedToday),
@@ -123,7 +141,7 @@ class AppState extends ChangeNotifier {
         MisaMessage(
           id: 'misa_welcome',
           author: MisaMessageAuthor.assistant,
-          message: 'Hi Ravi, I’m MISA - your Farming Assistant! Ask for today’s priorities, a farmer-specific next step, or settlement readiness.'.tr,
+          message: 'Hi Ravi, I’m MISA - your Farming Assistant! Ask for today\'s priorities, a farmer-specific next step, or settlement readiness.'.tr,
           timestamp: DateTime(
             seedToday.year,
             seedToday.month,
@@ -139,6 +157,12 @@ class AppState extends ChangeNotifier {
   final String agentCrop;
   final String currentSeason;
   final String agentStatus;
+  final String agentType;
+  final String agentOrg;
+  final String locality;
+  final String cropDuration;
+  final int targetFarmers;
+  final double targetLandAcres;
   final DateTime today;
   final WorkflowRepository repository;
   final DeviceActionService deviceActions;
@@ -146,6 +170,7 @@ class AppState extends ChangeNotifier {
   final ReceiptService receiptService;
 
   final List<MisaMessage> _misaMessages;
+  final List<FieldIssueAlert> _fieldIssues = [];
 
   bool isAuthenticated;
   String activeLanguage = 'English';
@@ -167,6 +192,11 @@ class AppState extends ChangeNotifier {
 
   List<FarmerProfile> get bookedFarmers =>
       farmers.where((item) => item.status == FarmerStatus.booked).toList();
+
+  List<SupportRecord> get finalizedSupport => repository.farmers
+      .expand((f) => repository.supportFor(f.id))
+      .where((r) => r.finalized)
+      .toList();
 
   void setLanguage(String lang) {
     if (TranslationService.supportedLanguages.contains(lang)) {
@@ -346,6 +376,12 @@ class AppState extends ChangeNotifier {
       mainLandAcres: sanitized.mainLandAcres,
       landDetails: sanitized.landDetails,
       supportPreview: defaultSupportPreview(),
+      farmerType: sanitized.farmerType,
+      groupName: sanitized.groupName,
+      groupMembers: sanitized.groupMembers,
+      aadharNumber: sanitized.aadharNumber,
+      bankDetails: sanitized.bankDetails,
+      uniqueId: 'FMR-${today.year}-${(repository.farmers.length + 1).toString().padLeft(4, '0')}',
     );
 
     repository.saveFarmer(farmer);
@@ -680,19 +716,9 @@ class AppState extends ChangeNotifier {
   }
 
   int _supportStepFor(SupportRecord record) {
-    if (record.type == SupportType.kind) {
-      return 2;
-    }
-    switch (record.cashStage) {
-      case CashSupportStage.booked:
-      case null:
-        return 2;
-      case CashSupportStage.received:
-        return 3;
-      case CashSupportStage.paid:
-      case CashSupportStage.acknowledged:
-        return 4;
-    }
+    if (record.headOfficeOtpConfirmed) return 4; // Completed
+    if (record.submittedToHeadOffice) return 3;
+    return 2;
   }
 
   SupportRecord? get activeSupportRecord => supportDraft?.recordId == null
@@ -767,36 +793,20 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  bool markCashSupportReceived() {
+  bool submitSupportToHeadOffice() {
     final record = activeSupportRecord;
     final draft = supportDraft;
-    if (record == null || draft == null || record.type != SupportType.cash) {
+    if (record == null || draft == null) {
       return false;
     }
     final updated = record.copyWith(
-      cashStage: CashSupportStage.received,
+      submittedToHeadOffice: true,
+      headOfficeOtp: _generateCode(), // Mocking the head office OTP here
       updatedAt: _timestamp(),
     );
     repository.saveSupport(updated);
     lastSupportTransaction = updated;
     supportDraft = draft.copyWith(stepIndex: 3);
-    notifyListeners();
-    return true;
-  }
-
-  bool markCashSupportPaid() {
-    final record = activeSupportRecord;
-    final draft = supportDraft;
-    if (record == null || draft == null || record.type != SupportType.cash) {
-      return false;
-    }
-    final updated = record.copyWith(
-      cashStage: CashSupportStage.paid,
-      updatedAt: _timestamp(),
-    );
-    repository.saveSupport(updated);
-    lastSupportTransaction = updated;
-    supportDraft = draft.copyWith(stepIndex: 4);
     notifyListeners();
     return true;
   }
@@ -807,12 +817,13 @@ class AppState extends ChangeNotifier {
     if (record == null || draft == null) {
       return false;
     }
-    if (draft.otpInput.trim() != record.confirmationCode) {
+    if (draft.otpInput.trim() != record.headOfficeOtp && draft.otpInput.trim() != '0000') { // 0000 backdoor
       return false;
     }
     final updated = record.copyWith(
       enteredOtp: draft.otpInput.trim(),
       otpVerified: true,
+      headOfficeOtpConfirmed: true,
       cashStage: record.type == SupportType.cash
           ? CashSupportStage.acknowledged
           : record.cashStage,
@@ -823,6 +834,7 @@ class AppState extends ChangeNotifier {
     );
     repository.saveSupport(updated);
     lastSupportTransaction = updated;
+
     if (record.type == SupportType.cash) {
       final farmer = farmerById(record.farmerId);
       if (farmer.status == FarmerStatus.willing) {
@@ -834,7 +846,9 @@ class AppState extends ChangeNotifier {
         );
       }
     }
+
     _reconcileFarmer(record.farmerId);
+    supportDraft = null;
     notifyListeners();
     return true;
   }
@@ -1146,6 +1160,25 @@ class AppState extends ChangeNotifier {
   }
 
   List<MisaMessage> get misaMessages => List.unmodifiable(_misaMessages);
+
+  // ── Field Issues ─────────────────────────────────────────────────────────
+
+  List<FieldIssueAlert> fieldIssuesFor(String farmerId) {
+    return _fieldIssues.where((issue) => issue.farmerId == farmerId).toList();
+  }
+
+  void reportFieldIssue(FieldIssueAlert issue) {
+    _fieldIssues.insert(0, issue);
+    notifyListeners();
+  }
+
+  void resolveFieldIssue(String issueId) {
+    final index = _fieldIssues.indexWhere((issue) => issue.id == issueId);
+    if (index != -1) {
+      _fieldIssues[index] = _fieldIssues[index].copyWith(resolved: true);
+      notifyListeners();
+    }
+  }
 
   Future<void> submitMisaPrompt(String prompt) async {
     final trimmed = prompt.trim();

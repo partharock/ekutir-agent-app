@@ -377,8 +377,8 @@ WorkflowSnapshot buildSeededWorkflowSnapshot({DateTime? today}) {
         transportAssigned: true,
         transportDate: seedToday.subtract(const Duration(days: 9)),
         carrierNumber: 'TRK-5582',
-        driverName: 'Ramesh Das',
-        driverPhone: '+91 9876503001',
+        transporterName: 'Ramesh Das',
+        carrierCapacity: 5.5,
         transportNotes: 'Delivered to cold storage.',
         submitted: true,
       ),
@@ -875,8 +875,8 @@ Map<String, dynamic> _procurementRecordToJson(ProcurementRecord record) {
     'transportAssigned': record.transportAssigned,
     'transportDate': record.transportDate?.toIso8601String(),
     'carrierNumber': record.carrierNumber,
-    'driverName': record.driverName,
-    'driverPhone': record.driverPhone,
+    'transporterName': record.transporterName,
+    'carrierCapacity': record.carrierCapacity,
     'transportNotes': record.transportNotes,
     'submitted': record.submitted,
   };
@@ -922,8 +922,8 @@ ProcurementRecord _procurementRecordFromJson(Map<String, dynamic> json) {
         ? null
         : DateTime.parse(json['transportDate'] as String),
     carrierNumber: json['carrierNumber'] as String? ?? '',
-    driverName: json['driverName'] as String? ?? '',
-    driverPhone: json['driverPhone'] as String? ?? '',
+    transporterName: json['transporterName'] as String? ?? '',
+    carrierCapacity: (json['carrierCapacity'] as num?)?.toDouble() ?? 0.0,
     transportNotes: json['transportNotes'] as String? ?? '',
     submitted: json['submitted'] as bool? ?? false,
   );

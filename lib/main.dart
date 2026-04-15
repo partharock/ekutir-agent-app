@@ -15,6 +15,7 @@ import 'screens/support_screens.dart';
 import 'screens/harvest_screens.dart';
 import 'screens/crop_plan_screen.dart';
 import 'screens/misa_ai_screen.dart';
+import 'screens/farmer_data_bank_screen.dart';
 import 'services/misa_service.dart';
 import 'services/plot_location_service.dart';
 
@@ -232,6 +233,66 @@ GoRouter _createRouter(AppState appState) {
               farmerId: state.uri.queryParameters['farmerId'],
             ),
           ),
+          GoRoute(
+            path: '/farmer-data-bank/:farmerId',
+            builder: (context, state) => FarmerDataBankScreen(
+              farmerId: state.pathParameters['farmerId']!,
+            ),
+          ),
+          GoRoute(
+            path: '/farmer-data-bank/:farmerId/personal-details',
+            builder: (context, state) => PersonalDetailsScreen(
+              farmerId: state.pathParameters['farmerId']!,
+            ),
+          ),
+          GoRoute(
+            path: '/farmer-data-bank/:farmerId/address-details',
+            builder: (context, state) => AddressDetailsScreen(
+              farmerId: state.pathParameters['farmerId']!,
+            ),
+          ),
+          GoRoute(
+            path: '/farmer-data-bank/:farmerId/farm-details',
+            builder: (context, state) => FarmDetailsScreen(
+              farmerId: state.pathParameters['farmerId']!,
+            ),
+          ),
+          GoRoute(
+            path: '/farmer-data-bank/:farmerId/farm-land-details',
+            builder: (context, state) => FarmLandDetailsScreen(
+              farmerId: state.pathParameters['farmerId']!,
+            ),
+          ),
+          GoRoute(
+            path: '/farmer-data-bank/:farmerId/technology-communication',
+            builder: (context, state) => TechnologyCommunicationScreen(
+              farmerId: state.pathParameters['farmerId']!,
+            ),
+          ),
+          GoRoute(
+            path: '/farmer-data-bank/:farmerId/identity-verification',
+            builder: (context, state) => IdentityVerificationScreen(
+              farmerId: state.pathParameters['farmerId']!,
+            ),
+          ),
+          GoRoute(
+            path: '/farmer-data-bank/:farmerId/household-income',
+            builder: (context, state) => HouseholdIncomeScreen(
+              farmerId: state.pathParameters['farmerId']!,
+            ),
+          ),
+          GoRoute(
+            path: '/farmer-data-bank/:farmerId/household-expenditure',
+            builder: (context, state) => HouseholdExpenditureScreen(
+              farmerId: state.pathParameters['farmerId']!,
+            ),
+          ),
+          GoRoute(
+            path: '/farmer-data-bank/:farmerId/institution-membership',
+            builder: (context, state) => InstitutionMembershipScreen(
+              farmerId: state.pathParameters['farmerId']!,
+            ),
+          ),
         ],
       ),
     ],
@@ -340,7 +401,8 @@ class AppShell extends StatelessWidget {
   final Widget child;
 
   AppTab get currentTab {
-    if (location.startsWith('/engage')) {
+    if (location.startsWith('/engage') ||
+        location.startsWith('/farmer-data-bank')) {
       return AppTab.engage;
     }
     if (location.startsWith('/support')) {

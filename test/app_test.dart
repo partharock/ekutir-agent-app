@@ -278,13 +278,10 @@ void main() {
     expect(state.saveSupportDetails(), isTrue);
     expect(state.farmerById('anita-devi').status, FarmerStatus.willing);
 
-    expect(state.markCashSupportReceived(), isTrue);
+    expect(state.submitSupportToHeadOffice(), isTrue);
     expect(state.farmerById('anita-devi').status, FarmerStatus.willing);
 
-    expect(state.markCashSupportPaid(), isTrue);
-    expect(state.farmerById('anita-devi').status, FarmerStatus.willing);
-
-    final code = state.activeSupportRecord!.confirmationCode!;
+    final code = state.activeSupportRecord!.headOfficeOtp!;
     state.updateSupportDraft(state.supportDraft!.copyWith(otpInput: code));
     expect(state.confirmSupportOtp(), isTrue);
     expect(state.farmerById('anita-devi').status, FarmerStatus.booked);
@@ -308,7 +305,9 @@ void main() {
     );
 
     expect(state.saveSupportDetails(), isTrue);
-    final code = state.activeSupportRecord!.confirmationCode!;
+    expect(state.submitSupportToHeadOffice(), isTrue);
+    
+    final code = state.activeSupportRecord!.headOfficeOtp!;
     state.updateSupportDraft(state.supportDraft!.copyWith(otpInput: code));
     expect(state.confirmSupportOtp(), isTrue);
     expect(state.farmerById('parul-begum').status, FarmerStatus.willing);
@@ -573,8 +572,8 @@ void main() {
       record.copyWith(
         transportDate: state.today,
         carrierNumber: 'TRK-9911',
-        driverName: 'Driver Test',
-        driverPhone: '+91 9876509999',
+        transporterName: 'Driver Test',
+        carrierCapacity: 4.5,
         transportNotes: 'Loaded from collection center.',
         transportAssigned: true,
       ),
@@ -627,8 +626,8 @@ void main() {
       record.copyWith(
         transportDate: state.today,
         carrierNumber: 'TRK-1100',
-        driverName: 'Harish',
-        driverPhone: '+91 9876510101',
+        transporterName: 'Harish',
+        carrierCapacity: 5.0,
         transportNotes: 'Ready for dispatch.',
         transportAssigned: true,
       ),
@@ -641,7 +640,8 @@ void main() {
       farmerId: 'amit-kumar',
       recordId: 'cash_amit_1',
     );
-    final code = state.activeSupportRecord!.confirmationCode!;
+    expect(state.submitSupportToHeadOffice(), isTrue);
+    final code = state.activeSupportRecord!.headOfficeOtp!;
     state.updateSupportDraft(state.supportDraft!.copyWith(otpInput: code));
     expect(state.confirmSupportOtp(), isTrue);
 
@@ -678,8 +678,8 @@ void main() {
         transportAssigned: true,
         transportDate: state.today,
         carrierNumber: 'TRK-2201',
-        driverName: 'Rakesh',
-        driverPhone: '+91 9876510102',
+        transporterName: 'Rakesh',
+        carrierCapacity: 10.0,
         transportNotes: 'Loaded for dispatch.',
       ),
     );
@@ -699,9 +699,10 @@ void main() {
       ),
     );
     expect(state.saveSupportDetails(), isTrue);
+    expect(state.submitSupportToHeadOffice(), isTrue);
     expect(state.canCompleteSettlement('ravi-kumar'), isFalse);
 
-    final code = state.activeSupportRecord!.confirmationCode!;
+    final code = state.activeSupportRecord!.headOfficeOtp!;
     state.updateSupportDraft(state.supportDraft!.copyWith(otpInput: code));
     expect(state.confirmSupportOtp(), isTrue);
     expect(state.canCompleteSettlement('ravi-kumar'), isTrue);
@@ -747,16 +748,18 @@ void main() {
     await tester.tap(find.byKey(const Key('support_primary_button')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('support_primary_button')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('support_primary_button')));
-    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('support_primary_button')));
     await tester.tap(find.byKey(const Key('support_primary_button')));
     await tester.pumpAndSettle();
 
-    final code = appState.activeSupportRecord!.confirmationCode!;
+    await tester.ensureVisible(find.byKey(const Key('support_primary_button')));
+    await tester.tap(find.byKey(const Key('support_primary_button')));
+    await tester.pumpAndSettle();
+
+    final code = appState.activeSupportRecord!.headOfficeOtp!;
     await tester.enterText(find.byType(EditableText).last, code);
     await tester.pump();
+    await tester.ensureVisible(find.byKey(const Key('support_primary_button')));
     await tester.tap(find.byKey(const Key('support_primary_button')));
     await tester.pumpAndSettle();
 
@@ -771,11 +774,18 @@ void main() {
     final appState = buildState();
     await pumpAuthenticatedApp(tester, appState: appState);
 
+    // Force a pending head office state to display the section
+    appState.startSupportFlow(SupportType.cash, farmerId: 'anita-devi');
+    appState.updateSupportDraft(appState.supportDraft!.copyWith(stepIndex: 1));
+    appState.saveSupportDetails();
+    appState.submitSupportToHeadOffice();
+    appState.cancelSupportFlow();
+
     await tester.tap(find.text('Support').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Post-Disbursement Summary'), findsOneWidget);
-    expect(find.text('OTP Follow-up'), findsOneWidget);
+    expect(find.text('Awaiting Head Office OTP'), findsOneWidget);
     expect(find.textContaining('Total Cash Disbursed'), findsWidgets);
   });
 
@@ -788,11 +798,25 @@ void main() {
 
     await tester.tap(find.text('Engage').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('All Farmers'));
+    await tester.ensureVisible(find.text('All Farmers').first);
+    await tester.tap(find.text('All Farmers').first);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Amit Kumar').first);
     await tester.tap(find.text('Amit Kumar').first, warnIfMissed: false);
     await tester.pumpAndSettle();
+    
+    await tester.tap(find.text('Profile').first);
+    await tester.pumpAndSettle();
+
+    final profileScrollable = find.descendant(
+      of: find.byType(TabBarView),
+      matching: find.byType(SingleChildScrollView),
+    ).last;
+    await tester.dragUntilVisible(
+      find.text('Pending Support Records'),
+      profileScrollable,
+      const Offset(0, -500),
+    );
 
     expect(find.text('Pending Support Records'), findsOneWidget);
     expect(find.text('Disbursement History'), findsOneWidget);
@@ -806,6 +830,15 @@ void main() {
     await tester.ensureVisible(find.text('Suresh Patel').first);
     await tester.tap(find.text('Suresh Patel').first, warnIfMissed: false);
     await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Profile').first);
+    await tester.pumpAndSettle();
+    
+    await tester.dragUntilVisible(
+      find.text('Pending Support Records'),
+      profileScrollable,
+      const Offset(0, -500),
+    );
 
     expect(find.text('Pending Support Records'), findsOneWidget);
     expect(find.text('No pending support records.'), findsOneWidget);
@@ -1136,6 +1169,31 @@ void main() {
       find.byKey(const Key('new_farmer_main_land_field')),
       '8',
     );
+    await tester.enterText(
+      find.byKey(const Key('aadhar_field')),
+      '1234 5678 9012',
+    );
+    await tester.enterText(
+      find.byKey(const Key('bank_account_name_field')),
+      'Plot Farmer',
+    );
+    await tester.enterText(
+      find.byKey(const Key('bank_name_field')),
+      'State Bank',
+    );
+    await tester.enterText(
+      find.byKey(const Key('bank_account_number_field')),
+      '987654321',
+    );
+    await tester.enterText(
+      find.byKey(const Key('bank_ifsc_field')),
+      'SBIN0001',
+    );
+
+    // Ensure keyboard closes so button is clickable
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
     await tester
         .ensureVisible(find.byKey(const Key('capture_plot_location_button')));
     await tester.tap(find.byKey(const Key('capture_plot_location_button')));

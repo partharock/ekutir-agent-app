@@ -214,6 +214,7 @@ class _FarmerCropPlanDetail extends StatelessWidget {
     final appState = context.watch<AppState>();
     final activities = appState.activitiesFor(farmer.id);
     final harvestDates = appState.harvestDateOptionsFor(farmer.id);
+    final fieldIssues = appState.fieldIssuesFor(farmer.id);
 
     return PageScaffold(
       title: 'Farmer Crop Plan'.tr,
@@ -298,6 +299,62 @@ class _FarmerCropPlanDetail extends StatelessWidget {
               ),
             ),
           if (harvestDates.isNotEmpty) const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Field Alerts',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => _showReportFieldIssueSheet(context, farmer.id),
+                icon: const Icon(Icons.warning_amber_rounded),
+                label: const Text('Report Issue'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (fieldIssues.isEmpty)
+            const Text('No field issues reported.')
+          else
+            ...fieldIssues.map(
+              (issue) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: SectionCard(
+                  backgroundColor: issue.resolved ? AppColors.cardBorder : AppColors.danger.withValues(alpha: 0.1),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Severity: ${issue.severity.label}',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: issue.resolved ? AppColors.textSecondary : AppColors.danger,
+                              ),
+                            ),
+                          ),
+                          if (!issue.resolved)
+                            TextButton(
+                              onPressed: () => context.read<AppState>().resolveFieldIssue(issue.id),
+                              child: const Text('Mark Resolved'),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(issue.description),
+                      if (issue.photoPath != null && issue.photoPath!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text('Photo: ${issue.photoPath}', style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: 24),
           Text(
             'Planned Activities',
             style: Theme.of(context).textTheme.titleLarge,
@@ -410,6 +467,135 @@ class ActivityTimelineCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+void _showReportFieldIssueSheet(BuildContext context, String farmerId) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) {
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: _ReportFieldIssueForm(farmerId: farmerId),
+      );
+    },
+  );
+}
+
+class _ReportFieldIssueForm extends StatefulWidget {
+  const _ReportFieldIssueForm({required this.farmerId});
+
+  final String farmerId;
+
+  @override
+  State<_ReportFieldIssueForm> createState() => _ReportFieldIssueFormState();
+}
+
+class _ReportFieldIssueFormState extends State<_ReportFieldIssueForm> {
+  final _descController = TextEditingController();
+  AlertSeverity _severity = AlertSeverity.medium;
+  String? _photoPath;
+
+  void _submit() {
+    if (_descController.text.trim().isEmpty) {
+      showMockSnackBar(context, 'Please enter a description');
+      return;
+    }
+
+    final issue = FieldIssueAlert(
+      id: 'issue_${DateTime.now().millisecondsSinceEpoch}',
+      farmerId: widget.farmerId,
+      description: _descController.text.trim(),
+      severity: _severity,
+      photoPath: _photoPath,
+      reportedAt: DateTime.now(),
+    );
+
+    context.read<AppState>().reportFieldIssue(issue);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  void dispose() {
+    _descController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Report Field Issue',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _descController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Issue Description',
+              hintText: 'Describe pests, disease, water logging, etc.',
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('Severity', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          SegmentedButton<AlertSeverity>(
+            segments: AlertSeverity.values
+                .map((s) => ButtonSegment(value: s, label: Text(s.label)))
+                .toList(),
+            selected: {_severity},
+            onSelectionChanged: (set) => setState(() => _severity = set.first),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.camera_alt_outlined),
+            title: Text(_photoPath == null ? 'Capture Photo' : 'Photo Captured'),
+            subtitle: _photoPath != null ? Text(_photoPath!) : null,
+            trailing: _photoPath != null
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () => setState(() => _photoPath = null),
+                  )
+                : null,
+            onTap: () {
+              setState(() {
+                _photoPath = '/simulated/storage/emulated/0/DCIM/issue_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              });
+            },
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _submit,
+              style: filledButtonStyle(),
+              child: const Text('Submit Alert'),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }

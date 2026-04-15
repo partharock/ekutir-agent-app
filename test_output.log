@@ -1,0 +1,313 @@
+00:00 +0: loading /Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart
+00:00 +0: auth flow reaches home and bottom navigation works
+00:01 +1: willing farmer becomes booked only after cash support acknowledged
+00:01 +2: kind support never books a willing farmer
+00:01 +3: agent can add a willing farmer with seeded activities and defaults
+00:01 +4: agent can add a willing farmer with an optional plot GPS location
+00:01 +5: add willing farmer rejects duplicate phone numbers and invalid land split
+00:01 +6: workflow snapshot preserves plot GPS and old data still loads
+00:01 +7: openFarmerPlotLocation builds the Mappls external URL
+00:01 +8: crop activity updates promote farmer stage
+00:01 +9: harvest dates come only from crop plan and procurement does not settle automatically
+00:01 +10: home priorities are farmer-specific and deep-link to exact next actions
+00:01 +11: settlement requires acknowledged support plus procurement
+00:01 +12: settlement stays blocked while any support record remains unresolved
+00:01 +12 -1: settlement stays blocked while any support record remains unresolved [E]
+  Expected: true
+    Actual: <false>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/app_test.dart 687:5                            main.<fn>
+  
+00:01 +12 -1: engage willing farmer routes to cash support instead of direct booking
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: exactly one matching candidate
+  Actual: _KeyWidgetFinder:<Found 0 widgets with key [<'start_cash_advance_button'>]: []>
+   Which: means none were found but one was expected
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:724:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart line 724
+The test description was:
+  engage willing farmer routes to cash support instead of direct booking
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +12 -2: engage willing farmer routes to cash support instead of direct booking [E]
+  Test failed. See exception logs above.
+  The test description was: engage willing farmer routes to cash support instead of direct booking
+  
+00:01 +12 -2: cash support flow enforces OTP and books farmer on acknowledge
+00:01 +13 -2: support screen shows post-disbursement summary and OTP follow-up
+00:01 +14 -2: farmer profile separates pending support from finalized history
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.first (dart:core/iterable.dart:663:7)
+#1      _FirstFinderMixin.filter (package:flutter_test/src/finders.dart:1340:28)
+#3      _AncestorFinderMixin.allCandidates (package:flutter_test/src/finders.dart:1814:49)
+#4      FinderBase.evaluate (package:flutter_test/src/finders.dart:987:76)
+#5      WidgetController.widgetList (package:flutter_test/src/controller.dart:843:19)
+#6      WidgetController._maybeViewOf (package:flutter_test/src/controller.dart:790:34)
+#7      WidgetController.tap (package:flutter_test/src/controller.dart:1073:31)
+#8      main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:808:18)
+<asynchronous suspension>
+#9      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#10     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 2 frames from dart:async-patch and package:stack_trace)
+
+The test description was:
+  farmer profile separates pending support from finalized history
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:02 +14 -3: farmer profile separates pending support from finalized history [E]
+  Test failed. See exception logs above.
+  The test description was: farmer profile separates pending support from finalized history
+  
+00:02 +14 -3: MISA general and farmer-specific flows produce actionable recommendations
+00:02 +15 -3: device actions use the injected services
+
+Warning: A call to tap() with finder "Found 1 widget with text "All Farmers": [
+  Text("All Farmers", dependencies: [DefaultSelectionStyle, DefaultTextStyle, MediaQuery]),
+]" derived an Offset (Offset(623.4, 1852.0)) that would not hit test on the specified widget.
+Maybe the widget is actually off-screen, or another widget is obscuring it, or the widget cannot receive pointer events.
+Indeed, Offset(623.4, 1852.0) is outside the bounds of the root of the render tree, Size(800.0, 600.0).
+The finder corresponds to this RenderBox: RenderParagraph#2812d relayoutBoundary=up36
+The hit test result at that offset is: HitTestResult(HitTestEntry<HitTestTarget>#27975(_ReusableRenderView#aba9f), HitTestEntry<HitTestTarget>#d4b4f(<AutomatedTestWidgetsFlutterBinding>))
+#0      WidgetController._getElementPoint (package:flutter_test/src/controller.dart:2158:25)
+#1      WidgetController.getCenter (package:flutter_test/src/controller.dart:1942:12)
+#2      WidgetController.tap (package:flutter_test/src/controller.dart:1075:7)
+#3      main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:885:18)
+<asynchronous suspension>
+#4      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#5      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+#6      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+To silence this warning, pass "warnIfMissed: false" to "tap()".
+To make this warning fatal, set WidgetController.hitTestWarningShouldBeFatal to true.
+
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.element (package:flutter_test/src/controller.dart:883:30)
+#2      WidgetController.ensureVisible (package:flutter_test/src/controller.dart:2382:32)
+#3      main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:890:18)
+<asynchronous suspension>
+#4      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#5      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  device actions use the injected services
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:03 +15 -4: device actions use the injected services [E]
+  Test failed. See exception logs above.
+  The test description was: device actions use the injected services
+  
+00:03 +15 -4: receipt actions use the injected receipt service
+00:03 +16 -4: persisted repository restores full workflow snapshot
+00:03 +17 -4: engage add willing farmer persists after app rebuild
+
+Warning: A call to tap() with finder "Found 1 widget with key [<'add_willing_farmer_button'>]: [
+  FilledButton-[<'add_willing_farmer_button'>](style: ButtonStyle#3a79c(textStyle: WidgetStatePropertyAll(null), backgroundColor: WidgetStateMapper<Color?>({WidgetState.disabled: Color(alpha: 0.3500, red: 0.3725, green: 0.5961, blue: 0.0000, colorSpace: ColorSpace.sRGB), WidgetState.any: Color(alpha: 1.0000, red: 0.3725, green: 0.5961, blue: 0.0000, colorSpace: ColorSpace.sRGB)}), foregroundColor: WidgetStateMapper<Color?>({WidgetState.disabled: null, WidgetState.any: Color(alpha: 1.0000, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB)}), overlayColor: WidgetStateMapper<Color?>({WidgetState.pressed: Color(alpha: 0.1020, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB), WidgetState.hovered: Color(alpha: 0.0784, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB), WidgetState.focused: Color(alpha: 0.1020, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB)}), shape: WidgetStatePropertyAll(RoundedRectangleBorder(BorderSide(width: 0.0, style: none), BorderRadius.circular(14.0))), mouseCursor: WidgetStateMapper<MouseCursor?>({WidgetState.disabled: null, WidgetState.any: null})), dependencies: [IconTheme, InheritedCupertinoTheme, MediaQuery, _InheritedTheme, _LocalizationsScope-[GlobalKey#c06dc]], state: _ButtonStyleState#0cfe5),
+]" derived an Offset (Offset(400.0, 1788.0)) that would not hit test on the specified widget.
+Maybe the widget is actually off-screen, or another widget is obscuring it, or the widget cannot receive pointer events.
+Indeed, Offset(400.0, 1788.0) is outside the bounds of the root of the render tree, Size(800.0, 600.0).
+The finder corresponds to this RenderBox: RenderSemanticsAnnotations#91244 relayoutBoundary=up15
+The hit test result at that offset is: HitTestResult(HitTestEntry<HitTestTarget>#a8a3a(_ReusableRenderView#aba9f), HitTestEntry<HitTestTarget>#2b33a(<AutomatedTestWidgetsFlutterBinding>))
+#0      WidgetController._getElementPoint (package:flutter_test/src/controller.dart:2158:25)
+#1      WidgetController.getCenter (package:flutter_test/src/controller.dart:1942:12)
+#2      WidgetController.tap (package:flutter_test/src/controller.dart:1075:7)
+#3      main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:972:18)
+<asynchronous suspension>
+#4      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#5      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+#6      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+To silence this warning, pass "warnIfMissed: false" to "tap()".
+To make this warning fatal, set WidgetController.hitTestWarningShouldBeFatal to true.
+
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.state (package:flutter_test/src/controller.dart:927:42)
+#2      WidgetTester.showKeyboard.<anonymous closure> (package:flutter_test/src/widget_tester.dart:1125:42)
+#5      TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#6      WidgetTester.showKeyboard (package:flutter_test/src/widget_tester.dart:1124:27)
+#7      WidgetTester.enterText.<anonymous closure> (package:flutter_test/src/widget_tester.dart:1160:13)
+#10     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#11     WidgetTester.enterText (package:flutter_test/src/widget_tester.dart:1159:27)
+#12     main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:975:18)
+<asynchronous suspension>
+#13     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#14     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 5 frames from dart:async and package:stack_trace)
+
+The test description was:
+  engage add willing farmer persists after app rebuild
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:03 +17 -5: engage add willing farmer persists after app rebuild [E]
+  Test failed. See exception logs above.
+  The test description was: engage add willing farmer persists after app rebuild
+  
+00:03 +17 -5: add willing farmer shows captured plot GPS preview
+
+Warning: A call to tap() with finder "Found 1 widget with key [<'add_willing_farmer_button'>]: [
+  FilledButton-[<'add_willing_farmer_button'>](style: ButtonStyle#3a79c(textStyle: WidgetStatePropertyAll(null), backgroundColor: WidgetStateMapper<Color?>({WidgetState.disabled: Color(alpha: 0.3500, red: 0.3725, green: 0.5961, blue: 0.0000, colorSpace: ColorSpace.sRGB), WidgetState.any: Color(alpha: 1.0000, red: 0.3725, green: 0.5961, blue: 0.0000, colorSpace: ColorSpace.sRGB)}), foregroundColor: WidgetStateMapper<Color?>({WidgetState.disabled: null, WidgetState.any: Color(alpha: 1.0000, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB)}), overlayColor: WidgetStateMapper<Color?>({WidgetState.pressed: Color(alpha: 0.1020, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB), WidgetState.hovered: Color(alpha: 0.0784, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB), WidgetState.focused: Color(alpha: 0.1020, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB)}), shape: WidgetStatePropertyAll(RoundedRectangleBorder(BorderSide(width: 0.0, style: none), BorderRadius.circular(14.0))), mouseCursor: WidgetStateMapper<MouseCursor?>({WidgetState.disabled: null, WidgetState.any: null})), dependencies: [IconTheme, InheritedCupertinoTheme, MediaQuery, _InheritedTheme, _LocalizationsScope-[GlobalKey#621a6]], state: _ButtonStyleState#b56e3),
+]" derived an Offset (Offset(400.0, 1788.0)) that would not hit test on the specified widget.
+Maybe the widget is actually off-screen, or another widget is obscuring it, or the widget cannot receive pointer events.
+Indeed, Offset(400.0, 1788.0) is outside the bounds of the root of the render tree, Size(800.0, 600.0).
+The finder corresponds to this RenderBox: RenderSemanticsAnnotations#2b11f relayoutBoundary=up15
+The hit test result at that offset is: HitTestResult(HitTestEntry<HitTestTarget>#5d013(_ReusableRenderView#aba9f), HitTestEntry<HitTestTarget>#3a0eb(<AutomatedTestWidgetsFlutterBinding>))
+#0      WidgetController._getElementPoint (package:flutter_test/src/controller.dart:2158:25)
+#1      WidgetController.getCenter (package:flutter_test/src/controller.dart:1942:12)
+#2      WidgetController.tap (package:flutter_test/src/controller.dart:1075:7)
+#3      main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:1047:18)
+<asynchronous suspension>
+#4      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#5      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+#6      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+To silence this warning, pass "warnIfMissed: false" to "tap()".
+To make this warning fatal, set WidgetController.hitTestWarningShouldBeFatal to true.
+
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.state (package:flutter_test/src/controller.dart:927:42)
+#2      WidgetTester.showKeyboard.<anonymous closure> (package:flutter_test/src/widget_tester.dart:1125:42)
+#5      TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#6      WidgetTester.showKeyboard (package:flutter_test/src/widget_tester.dart:1124:27)
+#7      WidgetTester.enterText.<anonymous closure> (package:flutter_test/src/widget_tester.dart:1160:13)
+#10     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#11     WidgetTester.enterText (package:flutter_test/src/widget_tester.dart:1159:27)
+#12     main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:1050:18)
+<asynchronous suspension>
+#13     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#14     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 5 frames from dart:async and package:stack_trace)
+
+The test description was:
+  add willing farmer shows captured plot GPS preview
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:04 +17 -6: add willing farmer shows captured plot GPS preview [E]
+  Test failed. See exception logs above.
+  The test description was: add willing farmer shows captured plot GPS preview
+  
+00:04 +17 -6: farmer details show plot GPS and open in map action
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: at least one matching candidate
+  Actual: _TextWidgetFinder:<Found 0 widgets with text "Plot Location": []>
+   Which: means none were found but some were expected
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:1099:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart line 1099
+The test description was:
+  farmer details show plot GPS and open in map action
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:04 +17 -7: farmer details show plot GPS and open in map action [E]
+  Test failed. See exception logs above.
+  The test description was: farmer details show plot GPS and open in map action
+  
+00:04 +17 -7: plot GPS persists after app rebuild and shows in details
+
+Warning: A call to tap() with finder "Found 1 widget with key [<'add_willing_farmer_button'>]: [
+  FilledButton-[<'add_willing_farmer_button'>](style: ButtonStyle#3a79c(textStyle: WidgetStatePropertyAll(null), backgroundColor: WidgetStateMapper<Color?>({WidgetState.disabled: Color(alpha: 0.3500, red: 0.3725, green: 0.5961, blue: 0.0000, colorSpace: ColorSpace.sRGB), WidgetState.any: Color(alpha: 1.0000, red: 0.3725, green: 0.5961, blue: 0.0000, colorSpace: ColorSpace.sRGB)}), foregroundColor: WidgetStateMapper<Color?>({WidgetState.disabled: null, WidgetState.any: Color(alpha: 1.0000, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB)}), overlayColor: WidgetStateMapper<Color?>({WidgetState.pressed: Color(alpha: 0.1020, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB), WidgetState.hovered: Color(alpha: 0.0784, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB), WidgetState.focused: Color(alpha: 0.1020, red: 1.0000, green: 1.0000, blue: 1.0000, colorSpace: ColorSpace.sRGB)}), shape: WidgetStatePropertyAll(RoundedRectangleBorder(BorderSide(width: 0.0, style: none), BorderRadius.circular(14.0))), mouseCursor: WidgetStateMapper<MouseCursor?>({WidgetState.disabled: null, WidgetState.any: null})), dependencies: [IconTheme, InheritedCupertinoTheme, MediaQuery, _InheritedTheme, _LocalizationsScope-[GlobalKey#27145]], state: _ButtonStyleState#d2748),
+]" derived an Offset (Offset(400.0, 1788.0)) that would not hit test on the specified widget.
+Maybe the widget is actually off-screen, or another widget is obscuring it, or the widget cannot receive pointer events.
+Indeed, Offset(400.0, 1788.0) is outside the bounds of the root of the render tree, Size(800.0, 600.0).
+The finder corresponds to this RenderBox: RenderSemanticsAnnotations#5816c relayoutBoundary=up15
+The hit test result at that offset is: HitTestResult(HitTestEntry<HitTestTarget>#d0c3e(_ReusableRenderView#aba9f), HitTestEntry<HitTestTarget>#5cf6f(<AutomatedTestWidgetsFlutterBinding>))
+#0      WidgetController._getElementPoint (package:flutter_test/src/controller.dart:2158:25)
+#1      WidgetController.getCenter (package:flutter_test/src/controller.dart:1942:12)
+#2      WidgetController.tap (package:flutter_test/src/controller.dart:1075:7)
+#3      main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:1133:18)
+<asynchronous suspension>
+#4      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#5      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+#6      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+To silence this warning, pass "warnIfMissed: false" to "tap()".
+To make this warning fatal, set WidgetController.hitTestWarningShouldBeFatal to true.
+
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.state (package:flutter_test/src/controller.dart:927:42)
+#2      WidgetTester.showKeyboard.<anonymous closure> (package:flutter_test/src/widget_tester.dart:1125:42)
+#5      TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#6      WidgetTester.showKeyboard (package:flutter_test/src/widget_tester.dart:1124:27)
+#7      WidgetTester.enterText.<anonymous closure> (package:flutter_test/src/widget_tester.dart:1160:13)
+#10     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#11     WidgetTester.enterText (package:flutter_test/src/widget_tester.dart:1159:27)
+#12     main.<anonymous closure> (file:///Users/parthaghosh/AndroidStudioProjects/ekutir-agent-app/test/app_test.dart:1136:18)
+<asynchronous suspension>
+#13     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#14     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 5 frames from dart:async and package:stack_trace)
+
+The test description was:
+  plot GPS persists after app rebuild and shows in details
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:04 +17 -8: plot GPS persists after app rebuild and shows in details [E]
+  Test failed. See exception logs above.
+  The test description was: plot GPS persists after app rebuild and shows in details
+  
+00:04 +17 -8: golden placeholder for home screen
+00:04 +17 ~1 -8: Some tests failed.

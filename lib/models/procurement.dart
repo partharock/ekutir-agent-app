@@ -55,8 +55,8 @@ class ProcurementRecord {
     this.transportAssigned = false,
     this.transportDate,
     this.carrierNumber = '',
-    this.driverName = '',
-    this.driverPhone = '',
+    this.transporterName = '',
+    this.carrierCapacity = 0.0,
     this.transportNotes = '',
     this.submitted = false,
   });
@@ -85,8 +85,8 @@ class ProcurementRecord {
   final bool transportAssigned;
   final DateTime? transportDate;
   final String carrierNumber;
-  final String driverName;
-  final String driverPhone;
+  final String transporterName;
+  final double carrierCapacity;
   final String transportNotes;
   final bool submitted;
 
@@ -153,8 +153,8 @@ class ProcurementRecord {
     bool? transportAssigned,
     DateTime? transportDate,
     String? carrierNumber,
-    String? driverName,
-    String? driverPhone,
+    String? transporterName,
+    double? carrierCapacity,
     String? transportNotes,
     bool? submitted,
   }) {
@@ -183,8 +183,8 @@ class ProcurementRecord {
       transportAssigned: transportAssigned ?? this.transportAssigned,
       transportDate: transportDate ?? this.transportDate,
       carrierNumber: carrierNumber ?? this.carrierNumber,
-      driverName: driverName ?? this.driverName,
-      driverPhone: driverPhone ?? this.driverPhone,
+      transporterName: transporterName ?? this.transporterName,
+      carrierCapacity: carrierCapacity ?? this.carrierCapacity,
       transportNotes: transportNotes ?? this.transportNotes,
       submitted: submitted ?? this.submitted,
     );

@@ -13,6 +13,7 @@ import '../state/app_state.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
 import '../widgets/common.dart';
+// MetricCard and FarmerTrackerCard moved here from home_screen.dart
 
 enum FarmerDirectoryTab { willing, booked, all }
 
@@ -39,6 +40,7 @@ class _EngagementScreenState extends State<EngagementScreen> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
+    final trackerFarmers = appState.priorityFarmers;
     final farmers = appState.searchFarmers(_query).where((farmer) {
       switch (_filter) {
         case FarmerDirectoryTab.willing:
@@ -55,6 +57,79 @@ class _EngagementScreenState extends State<EngagementScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Snapshot Metrics ─────────────────────────────────────────
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _SnapChip(
+                  label: 'WILLING'.tr,
+                  value: '${appState.willingCount}',
+                  color: AppColors.brandGreenDark,
+                  bg: AppColors.brandGreenLight,
+                ),
+                const SizedBox(width: 8),
+                _SnapChip(
+                  label: 'BOOKED'.tr,
+                  value: '${appState.bookedCount}',
+                  color: AppColors.brandBlue,
+                  bg: AppColors.brandBlueLight,
+                ),
+                const SizedBox(width: 8),
+                _SnapChip(
+                  label: 'NURSERY'.tr,
+                  value: '${appState.nurseryCount}',
+                  color: AppColors.heroForest,
+                  bg: AppColors.heroMist,
+                ),
+                const SizedBox(width: 8),
+                _SnapChip(
+                  label: 'TRANSPLANTED'.tr,
+                  value: '${appState.growthCount}',
+                  color: const Color(0xFF558B2F),
+                  bg: const Color(0xFFF1F8E9),
+                ),
+                const SizedBox(width: 8),
+                _SnapChip(
+                  label: 'HARVEST'.tr,
+                  value: '${appState.harvestCount}',
+                  color: const Color(0xFFF57F17),
+                  bg: const Color(0xFFFFF8E1),
+                ),
+                const SizedBox(width: 8),
+                _SnapChip(
+                  label: 'PROCUREMENT'.tr,
+                  value: '${appState.procurementCount}',
+                  color: const Color(0xFF5E35B1),
+                  bg: const Color(0xFFEDE7F6),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // ── Farmer Status Tracker ─────────────────────────────────────
+          Text(
+            'Farmer Status Tracker'.tr,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Latest stage and transactions status per farmer'.tr,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          ...trackerFarmers.map(
+            (farmer) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: FarmerTrackerCard(farmer: farmer),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(),
+          const SizedBox(height: 16),
+
+          // ── Search & Filter ───────────────────────────────────────────
           SearchField(
             hintText: 'Search farmer name, location...'.tr,
             onChanged: (value) => setState(() {
@@ -69,9 +144,9 @@ class _EngagementScreenState extends State<EngagementScreen> {
               style: filledButtonStyle(),
               onPressed: () => context.go('/engage/add'),
               icon: const Icon(Icons.person_add_alt_1_outlined),
-              label: Padding(
+              label: const Padding(
                 padding: EdgeInsets.symmetric(vertical: 14),
-                child: Text('Add Willing Farmer'.tr),
+                child: Text('Add Willing Farmer'),
               ),
             ),
           ),
@@ -155,7 +230,16 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
   final _totalLandController = TextEditingController();
   final _nurseryLandController = TextEditingController();
   final _mainLandController = TextEditingController();
+  // New fields
+  final _groupNameController = TextEditingController();
+  final _aadharController = TextEditingController();
+  final _bankHolderController = TextEditingController();
+  final _bankNameController = TextEditingController();
+  final _bankAccController = TextEditingController();
+  final _bankIfscController = TextEditingController();
+  final _bankUpiController = TextEditingController();
 
+  FarmerType _farmerType = FarmerType.individual;
   bool _defaultsApplied = false;
   PlotLocation? _plotLocation;
   bool _isCapturingPlotLocation = false;
@@ -163,9 +247,7 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_defaultsApplied) {
-      return;
-    }
+    if (_defaultsApplied) return;
     _seasonController.text = context.read<AppState>().currentSeason;
     _defaultsApplied = true;
   }
@@ -181,6 +263,13 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
     _totalLandController.dispose();
     _nurseryLandController.dispose();
     _mainLandController.dispose();
+    _groupNameController.dispose();
+    _aadharController.dispose();
+    _bankHolderController.dispose();
+    _bankNameController.dispose();
+    _bankAccController.dispose();
+    _bankIfscController.dispose();
+    _bankUpiController.dispose();
     super.dispose();
   }
 
@@ -269,9 +358,15 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
   }
 
   void _submit(AppState appState) {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
+
+    final bankDetails = BankDetails(
+      accountHolderName: _bankHolderController.text.trim(),
+      bankName: _bankNameController.text.trim(),
+      accountNumber: _bankAccController.text.trim(),
+      ifscCode: _bankIfscController.text.trim(),
+      upiId: _bankUpiController.text.trim(),
+    );
 
     final draft = NewFarmerDraft(
       name: _nameController.text,
@@ -284,6 +379,10 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
       totalLandAcres: _parseLandValue(_totalLandController.text)!,
       nurseryLandAcres: _parseLandValue(_nurseryLandController.text)!,
       mainLandAcres: _parseLandValue(_mainLandController.text)!,
+      farmerType: _farmerType,
+      groupName: _farmerType == FarmerType.group ? _groupNameController.text.trim() : null,
+      aadharNumber: _aadharController.text.trim().isEmpty ? null : _aadharController.text.trim(),
+      bankDetails: bankDetails.isEmpty ? null : bankDetails,
     );
 
     final farmer = appState.addWillingFarmer(draft);
@@ -292,7 +391,7 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
       return;
     }
 
-    showMockSnackBar(context, 'Willing farmer added.');
+    showMockSnackBar(context, 'Farmer enrolled successfully.');
     context.go('/engage/farmer/${farmer.id}?tab=profile');
   }
 
@@ -323,10 +422,42 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Basic Details',
-              style: Theme.of(context).textTheme.titleLarge,
+            // ── Farmer Type ─────────────────────────────────────────────
+            Text('Farmer Type'.tr, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SegmentedButton<FarmerType>(
+                    segments: FarmerType.values
+                        .map((t) => ButtonSegment<FarmerType>(
+                              value: t,
+                              label: Text(t.label),
+                            ))
+                        .toList(),
+                    selected: {_farmerType},
+                    onSelectionChanged: (selection) =>
+                        setState(() => _farmerType = selection.first),
+                    showSelectedIcon: false,
+                  ),
+                  if (_farmerType == FarmerType.group) ...[
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      key: const Key('new_farmer_group_name_field'),
+                      controller: _groupNameController,
+                      decoration: const InputDecoration(labelText: 'Group Name'),
+                      validator: (v) => _farmerType == FarmerType.group
+                          ? _validateRequired(v, 'Group name')
+                          : null,
+                    ),
+                  ],
+                ],
+              ),
             ),
+            const SizedBox(height: 18),
+            // ── Basic Details ───────────────────────────────────────────
+            Text('Basic Details'.tr, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             SectionCard(
               child: Column(
@@ -502,6 +633,71 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 18),
+            // ── Identity Details ──────────────────────────────────────
+            Text('Identity'.tr, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            SectionCard(
+              child: TextFormField(
+                key: const Key('new_farmer_aadhar_field'),
+                controller: _aadharController,
+                keyboardType: TextInputType.number,
+                maxLength: 12,
+                decoration: const InputDecoration(
+                  labelText: 'Aadhar Number',
+                  helperText: '12-digit Aadhar number (optional)',
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            // ── Bank Details ──────────────────────────────────────────
+            Text('Bank Details'.tr, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              'Required for direct benefit transfer'.tr,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            SectionCard(
+              child: Column(
+                children: [
+                  TextFormField(
+                    key: const Key('new_farmer_bank_holder_field'),
+                    controller: _bankHolderController,
+                    decoration: const InputDecoration(labelText: 'Account Holder Name'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_bank_name_field'),
+                    controller: _bankNameController,
+                    decoration: const InputDecoration(labelText: 'Bank Name'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_bank_acc_field'),
+                    controller: _bankAccController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Account Number'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_bank_ifsc_field'),
+                    controller: _bankIfscController,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(labelText: 'IFSC Code'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    key: const Key('new_farmer_bank_upi_field'),
+                    controller: _bankUpiController,
+                    decoration: const InputDecoration(
+                      labelText: 'UPI ID',
+                      helperText: 'Optional',
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -623,6 +819,16 @@ class FarmerProfileScreen extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 8),
+          // Personal Data Bank shortcut
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.go('/farmer-data-bank/$farmerId'),
+              icon: const Icon(Icons.account_circle_outlined),
+              label: Text('View Personal Data Bank'.tr),
+            ),
+          ),
           const SizedBox(height: 16),
           if (showCultivationTab) ...[
             Row(
@@ -728,7 +934,7 @@ class ProfileTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Support He Will Get',
+                'Support Coverage',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
@@ -738,6 +944,40 @@ class ProfileTab extends StatelessWidget {
                   child: InfoPair(label: entry.key, value: entry.value),
                 ),
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // ── Solution Kit ────────────────────────────────────────────────
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.cases_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Solution Kit'.tr,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Prescribed inputs & services for this season'.tr,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              InfoPair(label: 'Seed Variety'.tr, value: 'IR64 (Certified)'),
+              const SizedBox(height: 8),
+              InfoPair(label: 'Fertilizer'.tr, value: 'NPK 20:20:0 — 2 bags'),
+              const SizedBox(height: 8),
+              InfoPair(label: 'Pesticide'.tr, value: 'Chlorpyrifos 50 EC'),
+              const SizedBox(height: 8),
+              InfoPair(label: 'Advisory Visits'.tr, value: '3 planned (fortnightly)'),
+              const SizedBox(height: 8),
+              InfoPair(label: 'Crop Insurance'.tr, value: 'PMFBY — enrolled'),
             ],
           ),
         ),
@@ -800,9 +1040,19 @@ class ProfileTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Transaction / Activity Timeline',
-                style: Theme.of(context).textTheme.titleMedium,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Recent Activity Timeline',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {},
+                    child: const Text('View Full History'),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               ...timeline.take(6).map(
@@ -904,6 +1154,14 @@ class CultivationTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final activities = appState.activitiesFor(farmer.id);
+    final nurseryActivities = activities
+        .where((a) => a.type == CropActivityType.nurseryStart)
+        .toList();
+    final mainCropActivities = activities
+        .where((a) => a.type != CropActivityType.nurseryStart)
+        .toList();
+    final allNursery = nurseryActivities.isNotEmpty ? nurseryActivities : activities.take(2).toList();
+    final allMain = mainCropActivities.isNotEmpty ? mainCropActivities : activities.skip(2).take(4).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -939,22 +1197,55 @@ class CultivationTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Crop Planning',
+                'Pre-Harvest Activity Tracker - Nursery',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
-              ...activities.take(4).map(
-                    (activity) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _ActivityCard(activity: activity),
-                    ),
+              if (allNursery.isEmpty)
+                const Text('No nursery activities recorded.')
+              else
+                ...allNursery.map(
+                  (activity) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ActivityCard(activity: activity),
                   ),
+                ),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () =>
                       context.go('/crop-plan?farmerId=${farmer.id}'),
-                  child: Text('Open full crop plan'.tr),
+                  child: Text('View Full History'.tr),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pre-Harvest Activity Tracker - Main Crop',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              if (allMain.isEmpty)
+                const Text('No main crop activities recorded.')
+              else
+                ...allMain.map(
+                  (activity) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ActivityCard(activity: activity),
+                  ),
+                ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () =>
+                      context.go('/crop-plan?farmerId=${farmer.id}'),
+                  child: Text('View Full Crop Plan'.tr),
                 ),
               ),
             ],
@@ -1369,7 +1660,7 @@ class _StageActionPanel extends StatelessWidget {
           style: filledButtonStyle(),
           onPressed: () =>
               context.go('/support/flow/cash?farmerId=${farmer.id}'),
-          child: Text('Proceed To Booking'.tr),
+          child: Text('Book Farmer'.tr),
         ),
       );
       buttons.add(
@@ -1385,7 +1676,7 @@ class _StageActionPanel extends StatelessWidget {
           style: filledButtonStyle(),
           onPressed: () =>
               context.go('/support/flow/kind?farmerId=${farmer.id}'),
-          child: Text('Give Kind Support'.tr),
+          child: Text('Disburse Support'.tr),
         ),
       );
       buttons.add(
@@ -1424,6 +1715,130 @@ class _StageActionPanel extends StatelessWidget {
       spacing: 10,
       runSpacing: 10,
       children: buttons,
+    );
+  }
+}
+
+// ─── _SnapChip ────────────────────────────────────────────────────────────────
+
+class _SnapChip extends StatelessWidget {
+  const _SnapChip({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.bg,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+  final Color bg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 10,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── FarmerTrackerCard ────────────────────────────────────────────────────────
+
+class FarmerTrackerCard extends StatelessWidget {
+  const FarmerTrackerCard({super.key, required this.farmer});
+
+  final FarmerProfile farmer;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      farmer.name,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      farmer.location,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              StatusPill(
+                label: farmer.stage.label,
+                background: stageBackgroundColor(farmer.stage),
+                foreground: stageForegroundColor(farmer.stage),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              StatusPill(
+                label: 'Cash: ${appState.farmerTrackerSupportLabel(farmer.id, SupportType.cash)}',
+                background: AppColors.brandGreenLight,
+                foreground: AppColors.brandGreenDark,
+              ),
+              StatusPill(
+                label: 'Kind: ${appState.farmerTrackerSupportLabel(farmer.id, SupportType.kind)}',
+                background: AppColors.heroMist,
+                foreground: AppColors.heroForest,
+              ),
+              StatusPill(
+                label: 'Procurement: ${appState.farmerTrackerProcurementLabel(farmer.id)}',
+                background: AppColors.brandBlueLight,
+                foreground: AppColors.brandBlue,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => context.go('/engage/farmer/${farmer.id}?tab=profile'),
+              child: Text('View Details'.tr),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

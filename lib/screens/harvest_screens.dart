@@ -76,8 +76,8 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
   final _weighingNotesController = TextEditingController();
   final _rateController = TextEditingController();
   final _receiptMessageController = TextEditingController();
-  final _driverNameController = TextEditingController();
-  final _driverPhoneController = TextEditingController();
+  final _transporterNameController = TextEditingController();
+  final _carrierCapacityController = TextEditingController();
   final _transportNotesController = TextEditingController();
   final _carrierController = TextEditingController();
 
@@ -113,8 +113,8 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
     _weighingNotesController.dispose();
     _rateController.dispose();
     _receiptMessageController.dispose();
-    _driverNameController.dispose();
-    _driverPhoneController.dispose();
+    _transporterNameController.dispose();
+    _carrierCapacityController.dispose();
     _transportNotesController.dispose();
     _carrierController.dispose();
     super.dispose();
@@ -134,8 +134,8 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
     _weighingNotesController.text = record.weighingNotes;
     _rateController.text = record.ratePerKg.toStringAsFixed(0);
     _receiptMessageController.text = record.receiptMessage;
-    _driverNameController.text = record.driverName;
-    _driverPhoneController.text = record.driverPhone;
+    _transporterNameController.text = record.transporterName;
+    _carrierCapacityController.text = record.carrierCapacity.toString();
     _transportNotesController.text = record.transportNotes;
     _carrierController.text = record.carrierNumber;
   }
@@ -300,16 +300,16 @@ class _ProcurementFlowScreenState extends State<ProcurementFlowScreen> {
       case ProcurementStep.transport:
         if (record.transportDate == null ||
             _carrierController.text.trim().isEmpty ||
-            _driverNameController.text.trim().isEmpty ||
-            _driverPhoneController.text.trim().isEmpty ||
+            _transporterNameController.text.trim().isEmpty ||
+            _carrierCapacityController.text.trim().isEmpty ||
             !record.receiptGenerated) {
           return null;
         }
         return record.copyWith(
           transportAssigned: true,
           carrierNumber: _carrierController.text.trim(),
-          driverName: _driverNameController.text.trim(),
-          driverPhone: _driverPhoneController.text.trim(),
+          transporterName: _transporterNameController.text.trim(),
+          carrierCapacity: double.tryParse(_carrierCapacityController.text.trim()) ?? 0.0,
           transportNotes: _transportNotesController.text.trim(),
         );
     }
@@ -405,6 +405,13 @@ class ProcurementSuccessScreen extends StatelessWidget {
                   },
                   icon: const Icon(Icons.print_outlined),
                   label: Text('Print Receipt'.tr),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    showMockSnackBar(context, 'Receipt shared directly with Head Office server.');
+                  },
+                  icon: const Icon(Icons.cloud_upload_outlined),
+                  label: Text('Share with Head Office'.tr),
                 ),
               ],
             ),
@@ -669,12 +676,14 @@ class _PriceStep extends StatelessWidget {
         children: [
           Text('Price Breakdown'.tr, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 14),
-          TextField(
+          TextFormField(
             controller: parent._rateController,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            readOnly: true,
             decoration: const InputDecoration(
-              labelText: 'Rate per kg',
-              prefixText: '₹',
+              labelText: 'Price per KG (₹)',
+              hintText: 'e.g. 42.50',
+              filled: true,
             ),
           ),
           const SizedBox(height: 12),
@@ -769,6 +778,13 @@ class _ReceiptStep extends StatelessWidget {
               icon: const Icon(Icons.print_outlined),
               label: Text('Print Receipt'.tr),
             ),
+            OutlinedButton.icon(
+              onPressed: () {
+                showMockSnackBar(context, 'Receipt shared directly with Head Office server.');
+              },
+              icon: const Icon(Icons.cloud_upload_outlined),
+              label: Text('Share with Head Office'.tr),
+            ),
           ],
         ),
       ],
@@ -803,15 +819,21 @@ class _TransportStep extends StatelessWidget {
             decoration: const InputDecoration(labelText: 'Carrier Number'),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: parent._driverNameController,
-            decoration: const InputDecoration(labelText: 'Driver Name'),
+          TextFormField(
+            controller: parent._transporterNameController,
+            decoration: const InputDecoration(
+              labelText: 'Transporter Name',
+              hintText: 'e.g. Ravi Logistics',
+            ),
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: parent._driverPhoneController,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'Driver Phone No'),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: parent._carrierCapacityController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Carrier Capacity (MT)',
+              hintText: 'e.g. 4.5',
+            ),
           ),
           const SizedBox(height: 12),
           TextField(

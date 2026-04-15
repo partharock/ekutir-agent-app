@@ -98,7 +98,7 @@ class PdfReceiptService implements ReceiptService {
                 row('Rate / kg', '₹${record.ratePerKg.toStringAsFixed(0)}'),
                 row('Total', '₹${record.totalAmount.toStringAsFixed(0)}'),
                 row('Transport', record.transportAssigned
-                    ? '${record.carrierNumber} / ${record.driverName}'
+                    ? '${record.carrierNumber} / ${record.transporterName}'
                     : 'Pending'),
                 if (record.receiptMessage.isNotEmpty) ...[
                   pw.SizedBox(height: 16),
@@ -109,6 +109,17 @@ class PdfReceiptService implements ReceiptService {
                   pw.SizedBox(height: 6),
                   pw.Text(record.receiptMessage),
                 ],
+                pw.SizedBox(height: 24),
+                pw.Divider(),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Disclaimer: This receipt is subject to final quality checks at the Head Office.',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontStyle: pw.FontStyle.italic,
+                    color: PdfColors.grey600,
+                  ),
+                ),
               ],
             ),
           );

@@ -66,6 +66,9 @@ class SupportRecord {
     this.enteredOtp,
     this.otpVerified = false,
     this.finalized = false,
+    this.submittedToHeadOffice = false,
+    this.headOfficeOtpConfirmed = false,
+    this.headOfficeOtp,
   });
 
   final String id;
@@ -88,16 +91,22 @@ class SupportRecord {
   final String? enteredOtp;
   final bool otpVerified;
   final bool finalized;
+  final bool submittedToHeadOffice;
+  final bool headOfficeOtpConfirmed;
+  final String? headOfficeOtp;
 
-  bool get isAcknowledged => type == SupportType.cash
-      ? cashStage == CashSupportStage.acknowledged
-      : kindStage == KindSupportStage.acknowledged;
+  bool get isAcknowledged => headOfficeOtpConfirmed;
 
-  bool get isOtpPending => confirmationCode != null && !otpVerified;
+  bool get isOtpPending => submittedToHeadOffice && !headOfficeOtpConfirmed;
 
-  String get statusLabel => type == SupportType.cash
-      ? (cashStage?.label ?? CashSupportStage.booked.label)
-      : (kindStage?.label ?? KindSupportStage.given.label);
+  String get statusLabel {
+    if (headOfficeOtpConfirmed) return 'Confirmed';
+    if (submittedToHeadOffice) return 'Pending Head Office Confirmation';
+    
+    return type == SupportType.cash
+        ? (cashStage?.label ?? CashSupportStage.booked.label)
+        : (kindStage?.label ?? KindSupportStage.given.label);
+  }
 
   SupportRecord copyWith({
     String? id,
@@ -120,6 +129,9 @@ class SupportRecord {
     String? enteredOtp,
     bool? otpVerified,
     bool? finalized,
+    bool? submittedToHeadOffice,
+    bool? headOfficeOtpConfirmed,
+    String? headOfficeOtp,
   }) {
     return SupportRecord(
       id: id ?? this.id,
@@ -142,6 +154,9 @@ class SupportRecord {
       enteredOtp: enteredOtp ?? this.enteredOtp,
       otpVerified: otpVerified ?? this.otpVerified,
       finalized: finalized ?? this.finalized,
+      submittedToHeadOffice: submittedToHeadOffice ?? this.submittedToHeadOffice,
+      headOfficeOtpConfirmed: headOfficeOtpConfirmed ?? this.headOfficeOtpConfirmed,
+      headOfficeOtp: headOfficeOtp ?? this.headOfficeOtp,
     );
   }
 }
