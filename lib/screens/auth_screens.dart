@@ -40,7 +40,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Center(child: BrandMark(size: 56)),
+                    const Center(child: FfBioworksLogo(width: 144)),
                     const SizedBox(height: 20),
                     Text(
                       'Sign In To Your Account',
@@ -135,7 +135,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Center(child: BrandMark(size: 56)),
+                    const Center(child: FfBioworksLogo(width: 144)),
                     const SizedBox(height: 20),
                     Text(
                       'Verify Your Account',
@@ -226,7 +226,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           context.go('/home');
                         } else {
                           setState(() {
-                            _error = 'Enter any valid 4 digit OTP to continue.'.tr;
+                            _error =
+                                'Enter any valid 4 digit OTP to continue.'.tr;
                           });
                         }
                       },

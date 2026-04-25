@@ -172,33 +172,96 @@ String stageHelperText(FarmerStage stage) {
   }
 }
 
+class PlotCoordinate {
+  const PlotCoordinate(this.latitude, this.longitude);
+  final double latitude;
+  final double longitude;
+}
+
 class PlotLocation {
   const PlotLocation({
-    required this.latitude,
-    required this.longitude,
+    required this.polygonPoints,
     this.displayAddress,
     required this.capturedAt,
   });
 
-  final double latitude;
-  final double longitude;
+  final List<PlotCoordinate> polygonPoints;
   final String? displayAddress;
   final DateTime capturedAt;
 
-  String get coordinatesLabel =>
-      '${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)}';
+  PlotCoordinate get center {
+    if (polygonPoints.isEmpty) return const PlotCoordinate(0, 0);
+    double sumLat = 0;
+    double sumLng = 0;
+    for (final p in polygonPoints) {
+      sumLat += p.latitude;
+      sumLng += p.longitude;
+    }
+    return PlotCoordinate(
+      sumLat / polygonPoints.length,
+      sumLng / polygonPoints.length,
+    );
+  }
+
+  String get coordinatesLabel {
+    if (polygonPoints.isEmpty) return 'No bounds';
+    final c = center;
+    return '${c.latitude.toStringAsFixed(6)}, ${c.longitude.toStringAsFixed(6)} (Polygon)';
+  }
 
   PlotLocation copyWith({
-    double? latitude,
-    double? longitude,
+    List<PlotCoordinate>? polygonPoints,
     String? displayAddress,
     DateTime? capturedAt,
   }) {
     return PlotLocation(
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
+      polygonPoints: polygonPoints ?? this.polygonPoints,
       displayAddress: displayAddress ?? this.displayAddress,
       capturedAt: capturedAt ?? this.capturedAt,
+    );
+  }
+}
+
+class LandRecord {
+  const LandRecord({
+    required this.id,
+    required this.crop,
+    required this.season,
+    required this.totalAcres,
+    required this.nurseryAcres,
+    required this.mainAcres,
+    required this.details,
+    this.plotLocation,
+  });
+
+  final String id;
+  final String crop;
+  final String season;
+  final double totalAcres;
+  final double nurseryAcres;
+  final double mainAcres;
+  final String details;
+  final PlotLocation? plotLocation;
+
+  LandRecord copyWith({
+    String? id,
+    String? crop,
+    String? season,
+    double? totalAcres,
+    double? nurseryAcres,
+    double? mainAcres,
+    String? details,
+    PlotLocation? plotLocation,
+  }) {
+    return LandRecord(
+      id: id ?? this.id,
+      crop: crop ?? this.crop,
+      season: season ?? this.season,
+      totalAcres: totalAcres ?? this.totalAcres,
+      nurseryAcres: nurseryAcres ?? this.nurseryAcres,
+      mainAcres: mainAcres ?? this.mainAcres,
+      details: details ?? this.details,
+      plotLocation: plotLocation ?? this.plotLocation,
     );
   }
 }
@@ -209,15 +272,9 @@ class FarmerProfile {
     required this.name,
     required this.phone,
     required this.location,
-    this.plotLocation,
-    required this.totalLandAcres,
-    required this.crop,
-    required this.season,
+    required this.lands,
     required this.status,
     required this.stage,
-    required this.nurseryLandAcres,
-    required this.mainLandAcres,
-    required this.landDetails,
     required this.supportPreview,
     this.farmerType = FarmerType.individual,
     this.groupName,
@@ -231,15 +288,17 @@ class FarmerProfile {
   final String name;
   final String phone;
   final String location;
-  final PlotLocation? plotLocation;
-  final double totalLandAcres;
-  final String crop;
-  final String season;
+  final List<LandRecord> lands;
   final FarmerStatus status;
   final FarmerStage stage;
-  final double nurseryLandAcres;
-  final double mainLandAcres;
-  final String landDetails;
+  
+  double get totalLandAcres => lands.fold(0.0, (s, l) => s + l.totalAcres);
+  double get nurseryLandAcres => lands.fold(0.0, (s, l) => s + l.nurseryAcres);
+  double get mainLandAcres => lands.fold(0.0, (s, l) => s + l.mainAcres);
+  String get crop => lands.isEmpty ? '' : lands.first.crop;
+  String get season => lands.isEmpty ? '' : lands.first.season;
+  PlotLocation? get plotLocation => lands.isEmpty ? null : lands.first.plotLocation;
+  String get landDetails => lands.isEmpty ? '' : lands.first.details;
   final Map<String, String> supportPreview;
   final FarmerType farmerType;
   final String? groupName;
@@ -253,15 +312,9 @@ class FarmerProfile {
     String? name,
     String? phone,
     String? location,
-    PlotLocation? plotLocation,
-    double? totalLandAcres,
-    String? crop,
-    String? season,
+    List<LandRecord>? lands,
     FarmerStatus? status,
     FarmerStage? stage,
-    double? nurseryLandAcres,
-    double? mainLandAcres,
-    String? landDetails,
     Map<String, String>? supportPreview,
     FarmerType? farmerType,
     String? groupName,
@@ -275,15 +328,9 @@ class FarmerProfile {
       name: name ?? this.name,
       phone: phone ?? this.phone,
       location: location ?? this.location,
-      plotLocation: plotLocation ?? this.plotLocation,
-      totalLandAcres: totalLandAcres ?? this.totalLandAcres,
-      crop: crop ?? this.crop,
-      season: season ?? this.season,
+      lands: lands ?? this.lands,
       status: status ?? this.status,
       stage: stage ?? this.stage,
-      nurseryLandAcres: nurseryLandAcres ?? this.nurseryLandAcres,
-      mainLandAcres: mainLandAcres ?? this.mainLandAcres,
-      landDetails: landDetails ?? this.landDetails,
       supportPreview: supportPreview ?? this.supportPreview,
       farmerType: farmerType ?? this.farmerType,
       groupName: groupName ?? this.groupName,
@@ -300,13 +347,7 @@ class NewFarmerDraft {
     required this.name,
     required this.phone,
     required this.location,
-    this.plotLocation,
-    required this.crop,
-    required this.season,
-    required this.landDetails,
-    required this.totalLandAcres,
-    required this.nurseryLandAcres,
-    required this.mainLandAcres,
+    required this.lands,
     this.farmerType = FarmerType.individual,
     this.groupName,
     this.groupMembers,
@@ -317,13 +358,15 @@ class NewFarmerDraft {
   final String name;
   final String phone;
   final String location;
-  final PlotLocation? plotLocation;
-  final String crop;
-  final String season;
-  final String landDetails;
-  final double totalLandAcres;
-  final double nurseryLandAcres;
-  final double mainLandAcres;
+  final List<LandRecord> lands;
+
+  double get totalLandAcres => lands.fold(0.0, (s, l) => s + l.totalAcres);
+  double get nurseryLandAcres => lands.fold(0.0, (s, l) => s + l.nurseryAcres);
+  double get mainLandAcres => lands.fold(0.0, (s, l) => s + l.mainAcres);
+  String get crop => lands.isEmpty ? '' : lands.first.crop;
+  String get season => lands.isEmpty ? '' : lands.first.season;
+  PlotLocation? get plotLocation => lands.isEmpty ? null : lands.first.plotLocation;
+  String get landDetails => lands.isEmpty ? '' : lands.first.details;
   final FarmerType farmerType;
   final String? groupName;
   final int? groupMembers;
@@ -334,13 +377,7 @@ class NewFarmerDraft {
     String? name,
     String? phone,
     String? location,
-    PlotLocation? plotLocation,
-    String? crop,
-    String? season,
-    String? landDetails,
-    double? totalLandAcres,
-    double? nurseryLandAcres,
-    double? mainLandAcres,
+    List<LandRecord>? lands,
     FarmerType? farmerType,
     String? groupName,
     int? groupMembers,
@@ -351,13 +388,7 @@ class NewFarmerDraft {
       name: name ?? this.name,
       phone: phone ?? this.phone,
       location: location ?? this.location,
-      plotLocation: plotLocation ?? this.plotLocation,
-      crop: crop ?? this.crop,
-      season: season ?? this.season,
-      landDetails: landDetails ?? this.landDetails,
-      totalLandAcres: totalLandAcres ?? this.totalLandAcres,
-      nurseryLandAcres: nurseryLandAcres ?? this.nurseryLandAcres,
-      mainLandAcres: mainLandAcres ?? this.mainLandAcres,
+      lands: lands ?? this.lands,
       farmerType: farmerType ?? this.farmerType,
       groupName: groupName ?? this.groupName,
       groupMembers: groupMembers ?? this.groupMembers,

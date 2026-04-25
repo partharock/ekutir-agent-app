@@ -1,17 +1,19 @@
-import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:mappls_gl/mappls_gl.dart';
 
 import '../models/farmer.dart';
 import '../theme/app_colors.dart';
-import '../utils/mappls_web.dart';
 import '../widgets/common.dart';
 
+/// Polygon-mode map picker using Google Maps Flutter.
+/// Tap up to 4 corners on the map to define a plot boundary.
+/// The polygon is filled and each corner is numbered.
 class PlotLocationPickerScreen extends StatefulWidget {
   const PlotLocationPickerScreen({
     super.key,
@@ -29,377 +31,256 @@ class PlotLocationPickerScreen extends StatefulWidget {
       _PlotLocationPickerScreenState();
 }
 
-class _PlotLocationPickerScreenState extends State<PlotLocationPickerScreen> {
-  MapplsMapController? _mapController;
+class _PlotLocationPickerScreenState
+    extends State<PlotLocationPickerScreen> {
+  GoogleMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
-  late LatLng _selectedTarget;
   Timer? _searchDebounce;
-  String? _mapErrorMessage;
-  String? _searchFeedbackMessage;
+
+  final List<LatLng> _points = [];
+  Set<Marker> _markers = {};
+  Set<Polygon> _polygons = {};
+
   bool _isConfirming = false;
   bool _isSearching = false;
-  List<_PlotSearchSuggestion> _searchSuggestions = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedTarget = widget.initialTarget;
-  }
+  String? _searchFeedback;
+  List<_Suggestion> _suggestions = const [];
 
   @override
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
+    _mapController?.dispose();
     super.dispose();
   }
 
-  void _syncSelectionWithCamera() {
-    final target = _mapController?.cameraPosition?.target;
-    if (target == null) {
-      return;
-    }
+  // ─── Map tap ─────────────────────────────────────────────────────────────
+
+  void _onMapTap(LatLng latLng) {
+    if (_points.length >= 4) return;
     setState(() {
-      _selectedTarget = target;
+      _points.add(latLng);
+      _rebuildOverlays();
     });
   }
+
+  void _resetPolygon() {
+    setState(() {
+      _points.clear();
+      _markers = {};
+      _polygons = {};
+    });
+  }
+
+  void _rebuildOverlays() {
+    final markers = <Marker>{};
+    for (var i = 0; i < _points.length; i++) {
+      markers.add(
+        Marker(
+          markerId: MarkerId('pt_$i'),
+          position: _points[i],
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            _markerHue(i),
+          ),
+          infoWindow: InfoWindow(title: 'Point ${i + 1}'),
+        ),
+      );
+    }
+
+    final polygons = <Polygon>{};
+    if (_points.length >= 3) {
+      final ring = [..._points, _points.first];
+      polygons.add(
+        Polygon(
+          polygonId: const PolygonId('plot'),
+          points: ring,
+          fillColor: AppColors.brandGreen.withAlpha(60),
+          strokeColor: AppColors.brandGreen,
+          strokeWidth: 2,
+        ),
+      );
+    }
+
+    _markers = markers;
+    _polygons = polygons;
+  }
+
+  double _markerHue(int index) {
+    const hues = [
+      BitmapDescriptor.hueGreen,
+      BitmapDescriptor.hueYellow,
+      BitmapDescriptor.hueOrange,
+      BitmapDescriptor.hueRed,
+    ];
+    return hues[index % hues.length];
+  }
+
+  // ─── Search ───────────────────────────────────────────────────────────────
 
   void _onSearchChanged(String value) {
     _searchDebounce?.cancel();
-
     final query = value.trim();
-    setState(() {});
-    final minimumChars = kIsWeb ? 3 : 2;
-    if (query.length < minimumChars) {
+    if (query.length < 3) {
       setState(() {
         _isSearching = false;
-        _searchFeedbackMessage = query.isEmpty
-            ? null
-            : 'Enter at least $minimumChars characters to search.';
-        _searchSuggestions = const [];
+        _searchFeedback = null;
+        _suggestions = const [];
       });
       return;
     }
-    if (query.isEmpty) {
-      setState(() {
-        _isSearching = false;
-        _searchFeedbackMessage = null;
-        _searchSuggestions = const [];
-      });
-      return;
-    }
-
-    _searchDebounce = Timer(
-      Duration(milliseconds: kIsWeb ? 650 : 350),
-      () => _runSearch(query),
-    );
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () => _runSearch(query));
   }
 
-  Future<void> _runSearch(String rawQuery) async {
-    final query = rawQuery.trim();
-    if (query.isEmpty) {
-      return;
-    }
-
+  Future<void> _runSearch(String query) async {
+    if (!mounted) return;
     setState(() {
       _isSearching = true;
-      _searchFeedbackMessage = null;
-      _searchSuggestions = const [];
+      _searchFeedback = null;
+      _suggestions = const [];
     });
-
     try {
-      late List<_PlotSearchSuggestion> suggestions;
-      if (kIsWeb) {
-        suggestions = await _runWebSearch(query);
-      } else {
-        final searchCenter =
-            _mapController?.cameraPosition?.target ?? _selectedTarget;
-        final autoSuggestResponse = await MapplsAutoSuggest(
-          query: query,
-          location: searchCenter,
-          tokenizeAddress: true,
-        ).callAutoSuggest();
-
-        suggestions = _suggestionsFromAutoSuggest(
-          autoSuggestResponse?.suggestedLocations ?? const [],
-        );
-
-        if (suggestions.isEmpty) {
-          final geocodeResponse = await MapplsGeoCoding(
-            address: query,
-          ).callGeocoding();
-          suggestions = _suggestionsFromGeocode(
-            geocodeResponse?.results ?? const [],
-          );
-        }
-      }
-
-      if (!mounted || _searchController.text.trim() != query) {
-        return;
-      }
-
-      setState(() {
-        _isSearching = false;
-        _searchSuggestions = suggestions.take(6).toList(growable: false);
-        _searchFeedbackMessage = _searchSuggestions.isEmpty
-            ? 'No locations found for "$query".'
-            : null;
-      });
-    } catch (_) {
-      if (!mounted || _searchController.text.trim() != query) {
-        return;
-      }
-
-      setState(() {
-        _isSearching = false;
-        _searchSuggestions = const [];
-        _searchFeedbackMessage =
-            'Search is unavailable right now. Try moving the map manually.';
-      });
-    }
-  }
-
-  Future<List<_PlotSearchSuggestion>> _runWebSearch(String query) async {
-    final response = await http.get(
-      Uri.https('nominatim.openstreetmap.org', '/search', <String, String>{
+      // Use OpenStreetMap Nominatim — no API key needed, works on web & mobile.
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'q': query,
         'format': 'jsonv2',
         'limit': '6',
         'countrycodes': 'in',
-        'addressdetails': '0',
-      }),
-      headers: const {'Accept': 'application/json'},
-    );
+      });
+      final response = await http.get(uri,
+          headers: const {
+            'Accept': 'application/json',
+            'User-Agent': 'ekutir-agent-app/1.0',
+          });
 
-    if (response.statusCode != 200) {
-      throw Exception('Web search failed with ${response.statusCode}.');
-    }
+      if (!mounted) return;
 
-    final decoded = jsonDecode(response.body);
-    if (decoded is! List) {
-      return const [];
-    }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List) throw Exception('bad response');
 
-    return decoded
-        .whereType<Map<String, dynamic>>()
-        .map(_suggestionFromWebResult)
-        .whereType<_PlotSearchSuggestion>()
-        .toList(growable: false);
-  }
+      final suggestions = decoded
+          .whereType<Map<String, dynamic>>()
+          .map(_parseSuggestion)
+          .whereType<_Suggestion>()
+          .toList();
 
-  List<_PlotSearchSuggestion> _suggestionsFromAutoSuggest(
-    List<ELocation> results,
-  ) {
-    return results
-        .map(_suggestionFromAutoSuggestLocation)
-        .whereType<_PlotSearchSuggestion>()
-        .toList(growable: false);
-  }
-
-  List<_PlotSearchSuggestion> _suggestionsFromGeocode(
-    List<GeoCodeResult> results,
-  ) {
-    return results
-        .map(_suggestionFromGeocodeResult)
-        .whereType<_PlotSearchSuggestion>()
-        .toList(growable: false);
-  }
-
-  _PlotSearchSuggestion? _suggestionFromAutoSuggestLocation(
-    ELocation location,
-  ) {
-    final coordinates = _coordinatesFromAutoSuggestLocation(location);
-    final title = _normalizeAddress(location.placeName) ??
-        _normalizeAddress(location.alternateName) ??
-        _normalizeAddress(location.placeAddress);
-    final subtitle = _normalizeAddress(location.placeAddress);
-
-    if (title == null) {
-      return null;
-    }
-
-    return _PlotSearchSuggestion(
-      title: title,
-      subtitle: subtitle == title ? null : subtitle,
-      target: coordinates,
-      mapplsPin: _normalizeAddress(location.mapplsPin),
-    );
-  }
-
-  _PlotSearchSuggestion? _suggestionFromGeocodeResult(GeoCodeResult result) {
-    final latitude = result.latitude;
-    final longitude = result.longitude;
-    final title = _normalizeAddress(result.poi) ??
-        _normalizeAddress(result.houseName) ??
-        _normalizeAddress(result.formattedAddress);
-
-    if (title == null || latitude == null || longitude == null) {
-      return null;
-    }
-
-    return _PlotSearchSuggestion(
-      title: title,
-      subtitle: _normalizeAddress(result.formattedAddress) == title
-          ? null
-          : _normalizeAddress(result.formattedAddress),
-      target: LatLng(latitude, longitude),
-      mapplsPin: _normalizeAddress(result.mapplsPin),
-    );
-  }
-
-  _PlotSearchSuggestion? _suggestionFromWebResult(Map<String, dynamic> result) {
-    final latitude = double.tryParse('${result['lat'] ?? ''}');
-    final longitude = double.tryParse('${result['lon'] ?? ''}');
-    final displayName = _normalizeAddress(result['display_name'] as String?);
-
-    if (latitude == null || longitude == null || displayName == null) {
-      return null;
-    }
-
-    final parts = displayName
-        .split(',')
-        .map((part) => part.trim())
-        .where((part) => part.isNotEmpty)
-        .toList(growable: false);
-    final title = parts.isEmpty ? displayName : parts.first;
-    final subtitle = parts.length <= 1 ? null : parts.skip(1).join(', ');
-
-    return _PlotSearchSuggestion(
-      title: title,
-      subtitle: subtitle,
-      target: LatLng(latitude, longitude),
-    );
-  }
-
-  LatLng? _coordinatesFromAutoSuggestLocation(ELocation location) {
-    if (location.latitude != null && location.longitude != null) {
-      return LatLng(location.latitude!, location.longitude!);
-    }
-    if (location.entryLatitude != null && location.entryLongitude != null) {
-      return LatLng(location.entryLatitude!, location.entryLongitude!);
-    }
-    return null;
-  }
-
-  Future<void> _selectSearchSuggestion(_PlotSearchSuggestion suggestion) async {
-    try {
-      LatLng? target = suggestion.target;
-      if (!kIsWeb && target == null && suggestion.mapplsPin != null) {
-        final response = await MapplsPlaceDetail(
-          mapplsPin: suggestion.mapplsPin!,
-        ).callPlaceDetail();
-        if (response?.latitude != null && response?.longitude != null) {
-          target = LatLng(response!.latitude!, response.longitude!);
-        }
-      }
-
-      if (target == null) {
-        if (!mounted) {
-          return;
-        }
-        setState(() {
-          _searchFeedbackMessage =
-              'That result could not be centered on the map. Try another result.';
-        });
-        return;
-      }
-
-      await _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(target, 17),
-        duration: const Duration(milliseconds: 600),
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      FocusScope.of(context).unfocus();
-      final resolvedTarget = target;
       setState(() {
-        _selectedTarget = resolvedTarget;
-        _searchController.text = suggestion.title;
-        _searchSuggestions = const [];
-        _searchFeedbackMessage = null;
+        _isSearching = false;
+        _suggestions = suggestions.take(6).toList();
+        _searchFeedback =
+            suggestions.isEmpty ? 'No locations found for "$query".' : null;
       });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
-        _searchFeedbackMessage =
-            'Unable to move to that location right now. Try again.';
+        _isSearching = false;
+        _searchFeedback = 'Search unavailable. Move the map manually.';
       });
     }
   }
 
-  Future<void> _confirmSelection() async {
+  _Suggestion? _parseSuggestion(Map<String, dynamic> json) {
+    final lat = double.tryParse('${json['lat'] ?? ''}');
+    final lng = double.tryParse('${json['lon'] ?? ''}');
+    final name = (json['display_name'] as String?)?.trim();
+    if (lat == null || lng == null || name == null || name.isEmpty) return null;
+    final parts = name.split(',').map((s) => s.trim()).toList();
+    return _Suggestion(
+      title: parts.first,
+      subtitle: parts.length > 1 ? parts.skip(1).join(', ') : null,
+      target: LatLng(lat, lng),
+    );
+  }
+
+  Future<void> _selectSuggestion(_Suggestion s) async {
+    _searchDebounce?.cancel();
+    FocusScope.of(context).unfocus();
     setState(() {
-      _isConfirming = true;
+      _searchController.text = s.title;
+      _suggestions = const [];
+      _searchFeedback = null;
     });
+    await _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(s.target, 17),
+    );
+  }
+
+  // ─── Confirm ──────────────────────────────────────────────────────────────
+
+  Future<void> _confirmBounds() async {
+    if (_points.length < 4) return;
+    setState(() => _isConfirming = true);
 
     String? displayAddress;
     try {
-      final response = await MapplsReverseGeocode(
-        location: _selectedTarget,
-      ).callReverseGeocode();
-      final results = response?.results;
-      if (results != null && results.isNotEmpty) {
-        displayAddress = results.first.formattedAddress;
+      final center = _centroid(_points);
+      // Reverse geocode via Nominatim (no key required).
+      final uri = Uri.https('nominatim.openstreetmap.org', '/reverse', {
+        'lat': '${center.latitude}',
+        'lon': '${center.longitude}',
+        'format': 'jsonv2',
+      });
+      final response = await http.get(uri,
+          headers: const {
+            'Accept': 'application/json',
+            'User-Agent': 'ekutir-agent-app/1.0',
+          });
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        displayAddress = data['display_name'] as String?;
       }
     } catch (_) {
-      // Saving raw coordinates is still useful if reverse geocoding fails.
+      // Fallback: use coordinates string.
     }
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
-    Navigator.of(context).pop(
-      PlotLocation(
-        latitude: _selectedTarget.latitude,
-        longitude: _selectedTarget.longitude,
-        displayAddress: _normalizeAddress(displayAddress),
-        capturedAt: DateTime.now(),
-      ),
+    final plot = PlotLocation(
+      polygonPoints: _points
+          .map((p) => PlotCoordinate(p.latitude, p.longitude))
+          .toList(),
+      displayAddress: displayAddress,
+      capturedAt: DateTime.now(),
     );
+    Navigator.of(context).pop(plot);
   }
 
-  String? _normalizeAddress(String? value) {
-    final trimmed = value?.trim();
-    if (trimmed == null || trimmed.isEmpty) {
-      return null;
-    }
-    return trimmed;
+  LatLng _centroid(List<LatLng> pts) {
+    final lat = pts.map((p) => p.latitude).reduce((a, b) => a + b) / pts.length;
+    final lng = pts.map((p) => p.longitude).reduce((a, b) => a + b) / pts.length;
+    return LatLng(lat, lng);
   }
+
+  // ─── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final mapUnavailableOnWeb = kIsWeb && !isMapplsWebSdkLoaded;
-    final searchDisabled = mapUnavailableOnWeb || _mapErrorMessage != null;
+    final canConfirm = _points.length == 4 && !_isConfirming;
 
     return PageScaffold(
-      title: 'Plot GPS Location'.tr,
+      title: 'Plot Bounds'.tr,
       showBack: true,
-      description:
-          'Search a nearby place or move the map until the center pin sits on the farmer plot.',
+      description: 'Tap the map to place 4 corner points. A polygon will be drawn automatically.',
       footer: SizedBox(
         width: double.infinity,
         child: FilledButton.icon(
-          key: const Key('confirm_plot_location_button'),
+          key: const Key('confirm_plot_bounds_button'),
           style: filledButtonStyle(),
-          onPressed: _isConfirming || _mapErrorMessage != null
-              ? null
-              : _confirmSelection,
+          onPressed: canConfirm ? _confirmBounds : null,
           icon: _isConfirming
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
               : const Icon(Icons.check_circle_outline),
           label: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Text(
-              _isConfirming ? 'Saving Plot Location...' : 'Use This Plot',
+              _isConfirming
+                  ? 'Saving...'
+                  : _points.length == 4
+                      ? 'Confirm Plot Bounds'
+                      : 'Tap ${4 - _points.length} more point${4 - _points.length == 1 ? '' : 's'}',
             ),
           ),
         ),
@@ -407,43 +288,20 @@ class _PlotLocationPickerScreenState extends State<PlotLocationPickerScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Search bar ──────────────────────────────────────────────────
           SectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Search Nearby',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('Search Location', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                Text(
-                  'Search by village, landmark, or address to jump the map closer to the plot.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                if (kIsWeb) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Web search is optimized for finding nearby localities and landmarks before you fine-tune the plot pin.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                ],
-                const SizedBox(height: 12),
                 TextField(
-                  key: const Key('plot_location_search_field'),
+                  key: const Key('plot_search_field'),
                   controller: _searchController,
-                  enabled: !searchDisabled,
-                  textInputAction: TextInputAction.search,
                   onChanged: _onSearchChanged,
-                  onSubmitted: _runSearch,
                   decoration: InputDecoration(
-                    hintText: 'Search village, landmark, or address'.tr,
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      size: 20,
-                      color: AppColors.heroForest,
-                    ),
+                    hintText: 'Search village or landmark…'.tr,
+                    prefixIcon: const Icon(Icons.search, color: AppColors.heroForest, size: 20),
                     suffixIcon: _isSearching
                         ? const Padding(
                             padding: EdgeInsets.all(12),
@@ -453,41 +311,29 @@ class _PlotLocationPickerScreenState extends State<PlotLocationPickerScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           )
-                        : (_searchController.text.trim().isEmpty
-                            ? null
-                            : IconButton(
+                        : _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.close),
                                 onPressed: () {
-                                  _searchDebounce?.cancel();
                                   _searchController.clear();
                                   setState(() {
-                                    _searchFeedbackMessage = null;
-                                    _searchSuggestions = const [];
+                                    _suggestions = const [];
+                                    _searchFeedback = null;
                                   });
                                 },
-                                icon: const Icon(Icons.close),
-                              )),
-                    fillColor: const Color(0xFFF4F5F8),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.cardBorder),
-                    ),
+                              )
+                            : null,
                   ),
                 ),
-                if (_searchFeedbackMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _searchFeedbackMessage!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
+                if (_searchFeedback != null) ...[
+                  const SizedBox(height: 8),
+                  Text(_searchFeedback!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          )),
                 ],
-                if (_searchSuggestions.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                if (_suggestions.isNotEmpty) ...[
+                  const SizedBox(height: 8),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       color: AppColors.surfaceMuted,
@@ -497,23 +343,16 @@ class _PlotLocationPickerScreenState extends State<PlotLocationPickerScreen> {
                     child: ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _searchSuggestions.length,
-                      separatorBuilder: (_, __) =>
-                          const Divider(height: 1, thickness: 1),
-                      itemBuilder: (context, index) {
-                        final suggestion = _searchSuggestions[index];
+                      itemCount: _suggestions.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final s = _suggestions[i];
                         return ListTile(
-                          key: Key('plot_location_search_result_$index'),
-                          leading: const Icon(
-                            Icons.place_outlined,
-                            color: AppColors.heroForest,
-                          ),
-                          title: Text(suggestion.title),
-                          subtitle: suggestion.subtitle == null
-                              ? null
-                              : Text(suggestion.subtitle!),
+                          leading: const Icon(Icons.place_outlined, color: AppColors.heroForest),
+                          title: Text(s.title),
+                          subtitle: s.subtitle != null ? Text(s.subtitle!) : null,
                           trailing: const Icon(Icons.north_west),
-                          onTap: () => _selectSearchSuggestion(suggestion),
+                          onTap: () => _selectSuggestion(s),
                         );
                       },
                     ),
@@ -522,140 +361,178 @@ class _PlotLocationPickerScreenState extends State<PlotLocationPickerScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Center Pin',
-                  style: Theme.of(context).textTheme.titleMedium,
+          const SizedBox(height: 12),
+
+          // ── Points counter + reset ───────────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${_points.length}/4 corners placed',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              if (_points.isNotEmpty)
+                TextButton.icon(
+                  onPressed: _resetPolygon,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Reset'),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Pan and zoom the map. The green pin stays fixed at the center and marks the saved plot point.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+
+          // ── Map ─────────────────────────────────────────────────────────
           SectionCard(
             useInnerPadding: false,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: SizedBox(
-                height: 420,
-                child: mapUnavailableOnWeb
-                    ? Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Center(
-                          child: Text(
-                            'Mappls web SDK is not configured. Add your web static key in web/mappls-config.js, rebuild the app, and try again.',
-                            style: Theme.of(context).textTheme.bodyLarge,
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
+                height: 440,
+                child: kIsWeb
+                    ? _WebMapFallback(
+                        points: _points,
+                        onReset: _resetPolygon,
                       )
-                    : Stack(
-                        children: [
-                          MapplsMap(
-                            initialCameraPosition: CameraPosition(
-                              target: widget.initialTarget,
-                              zoom: widget.initialZoom,
-                            ),
-                            trackCameraPosition: true,
-                            myLocationEnabled: widget.enableMyLocation,
-                            onMapCreated: (controller) {
-                              _mapController = controller;
-                              _syncSelectionWithCamera();
-                            },
-                            onMapError: (code, message) {
-                              setState(() {
-                                _mapErrorMessage = message;
-                              });
-                            },
-                            onCameraIdle: _syncSelectionWithCamera,
-                          ),
-                          const IgnorePointer(
-                            child: Center(
-                              child: Padding(
-                                padding: EdgeInsets.only(bottom: 28),
-                                child: Icon(
-                                  Icons.location_on,
-                                  size: 44,
-                                  color: AppColors.brandGreen,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (_mapErrorMessage != null)
-                            Positioned(
-                              left: 12,
-                              right: 12,
-                              top: 12,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFDECEC),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: const Color(0xFFF4B4B4),
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Text(
-                                    'Map unavailable. Confirm the Mappls app credentials for this platform and try again.',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+                    : GoogleMap(
+                        initialCameraPosition: CameraPosition(
+                          target: widget.initialTarget,
+                          zoom: widget.initialZoom,
+                        ),
+                        myLocationEnabled: widget.enableMyLocation,
+                        myLocationButtonEnabled: widget.enableMyLocation,
+                        markers: _markers,
+                        polygons: _polygons,
+                        onTap: _onMapTap,
+                        onMapCreated: (c) => _mapController = c,
+                        mapType: MapType.satellite,
+                        zoomControlsEnabled: true,
+                        compassEnabled: true,
                       ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Selected Coordinates',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                InfoPair(
-                  label: 'Latitude'.tr,
-                  value: _selectedTarget.latitude.toStringAsFixed(6),
-                ),
-                const SizedBox(height: 10),
-                InfoPair(
-                  label: 'Longitude'.tr,
-                  value: _selectedTarget.longitude.toStringAsFixed(6),
-                ),
-              ],
+
+          const SizedBox(height: 12),
+
+          // ── Coordinates summary ─────────────────────────────────────────
+          if (_points.isNotEmpty)
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Captured Points',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  ..._points.asMap().entries.map(
+                        (e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: [
+                              _PointBadge(number: e.key + 1),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${e.value.latitude.toStringAsFixed(6)}, ${e.value.longitude.toStringAsFixed(6)}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _PlotSearchSuggestion {
-  const _PlotSearchSuggestion({
-    required this.title,
-    this.subtitle,
-    this.target,
-    this.mapplsPin,
-  });
+// ─── Web fallback ─────────────────────────────────────────────────────────────
+// google_maps_flutter doesn't work on Flutter Web. Show a clear message
+// with the captured coordinates instead.
 
+class _WebMapFallback extends StatelessWidget {
+  const _WebMapFallback({required this.points, required this.onReset});
+
+  final List<LatLng> points;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFE8F5E9),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.map_outlined, size: 52, color: AppColors.brandGreen),
+              const SizedBox(height: 12),
+              Text(
+                'Map is only available on the Android / iOS app.',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'On the native app, tap four corners of the farmer\'s plot to draw a boundary polygon.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              if (points.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text('${points.length} point(s) captured',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: AppColors.brandGreenDark)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+class _PointBadge extends StatelessWidget {
+  const _PointBadge({required this.number});
+  final int number;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = [
+      AppColors.brandGreen,
+      const Color(0xFFF9A825),
+      const Color(0xFFEF6C00),
+      AppColors.danger,
+    ];
+    return CircleAvatar(
+      radius: 12,
+      backgroundColor: colors[(number - 1) % colors.length],
+      child: Text(
+        '$number',
+        style: const TextStyle(
+            color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+class _Suggestion {
+  const _Suggestion({
+    required this.title,
+    required this.target,
+    this.subtitle,
+  });
   final String title;
   final String? subtitle;
-  final LatLng? target;
-  final String? mapplsPin;
+  final LatLng target;
 }

@@ -67,7 +67,7 @@ Uri buildMapplsLocationUri(PlotLocation plotLocation, {String? label}) {
   }
   return Uri.https(
     'mappls.com',
-    '/location/${plotLocation.latitude},${plotLocation.longitude}',
+    '/location/${plotLocation.center.latitude},${plotLocation.center.longitude}',
     queryParameters.isEmpty ? null : queryParameters,
   );
 }

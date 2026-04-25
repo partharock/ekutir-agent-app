@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:mappls_gl/mappls_gl.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../models/farmer.dart';
 import '../screens/plot_location_picker_screen.dart';
@@ -24,9 +24,10 @@ class PlotLocationException implements Exception {
   String toString() => message;
 }
 
-class MapplsPlotLocationService implements PlotLocationService {
-  const MapplsPlotLocationService();
+class GoogleMapsPlotLocationService implements PlotLocationService {
+  const GoogleMapsPlotLocationService();
 
+  // Centre of India as the fallback.
   static const LatLng _defaultTarget = LatLng(20.5937, 78.9629);
 
   @override
@@ -39,14 +40,13 @@ class MapplsPlotLocationService implements PlotLocationService {
       locationHint: locationHint,
       currentLocation: currentLocation,
     );
-    if (!context.mounted) {
-      return null;
-    }
+
+    if (!context.mounted) return null;
 
     return Navigator.of(context).push<PlotLocation>(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (context) => PlotLocationPickerScreen(
+        builder: (_) => PlotLocationPickerScreen(
           initialTarget: seed.target,
           initialZoom: seed.zoom,
           enableMyLocation: seed.enableMyLocation,
@@ -59,29 +59,23 @@ class MapplsPlotLocationService implements PlotLocationService {
     required String locationHint,
     PlotLocation? currentLocation,
   }) async {
-    if (currentLocation != null) {
+    // If there's already a captured polygon, zoom to its centre.
+    if (currentLocation != null && currentLocation.polygonPoints.isNotEmpty) {
+      final c = currentLocation.center;
       return _PlotLocationSeed(
-        target: LatLng(currentLocation.latitude, currentLocation.longitude),
+        target: LatLng(c.latitude, c.longitude),
         zoom: 17,
         enableMyLocation: false,
       );
     }
 
-    final currentTarget = await _tryCurrentLocation();
-    if (currentTarget != null) {
+    // Try GPS.
+    final gpsTarget = await _tryGps();
+    if (gpsTarget != null) {
       return _PlotLocationSeed(
-        target: currentTarget,
+        target: gpsTarget,
         zoom: 17,
         enableMyLocation: true,
-      );
-    }
-
-    final geocodedTarget = await _tryGeocode(locationHint);
-    if (geocodedTarget != null) {
-      return _PlotLocationSeed(
-        target: geocodedTarget,
-        zoom: 15,
-        enableMyLocation: false,
       );
     }
 
@@ -92,51 +86,20 @@ class MapplsPlotLocationService implements PlotLocationService {
     );
   }
 
-  Future<LatLng?> _tryCurrentLocation() async {
+  Future<LatLng?> _tryGps() async {
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        return null;
+      if (!await Geolocator.isLocationServiceEnabled()) { return null; }
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
       }
-
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        return null;
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.best,
-        ),
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) { return null; }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
       );
-      return LatLng(position.latitude, position.longitude);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<LatLng?> _tryGeocode(String locationHint) async {
-    final normalizedHint = locationHint.trim();
-    if (normalizedHint.isEmpty) {
-      return null;
-    }
-
-    try {
-      final response = await MapplsGeoCoding(
-        address: normalizedHint,
-      ).callGeocoding();
-      final results = response?.results;
-      if (results == null || results.isEmpty) {
-        return null;
-      }
-      final first = results.first;
-      if (first.latitude == null || first.longitude == null) {
-        return null;
-      }
-      return LatLng(first.latitude!, first.longitude!);
+      return LatLng(pos.latitude, pos.longitude);
     } catch (_) {
       return null;
     }

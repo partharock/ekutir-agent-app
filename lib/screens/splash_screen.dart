@@ -46,17 +46,8 @@ class _SplashScreenState extends State<SplashScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: const [
-                BrandMark(size: 54),
-                SizedBox(height: 16),
-                Text(
-                  'eK Link',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.brandBlue,
-                  ),
-                ),
-                SizedBox(height: 14),
+                FfBioworksLogo(width: 154),
+                SizedBox(height: 18),
                 Text(
                   'eK Acre Growth',
                   style: TextStyle(

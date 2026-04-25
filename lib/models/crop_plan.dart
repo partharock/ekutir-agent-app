@@ -39,7 +39,7 @@ class CropPlanActivity {
   final DateTime plannedDate;
   final String detail;
   final CropActivityStatus status;
-
+  
   bool get completed => status == CropActivityStatus.completed;
 
   bool get isHarvestWindow =>

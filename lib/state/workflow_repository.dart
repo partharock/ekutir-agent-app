@@ -148,15 +148,20 @@ WorkflowSnapshot buildSeededWorkflowSnapshot({DateTime? today}) {
       name: name,
       phone: phone,
       location: location,
-      plotLocation: plotLocation,
-      totalLandAcres: acres,
-      crop: crop,
-      season: season,
+      lands: [
+        LandRecord(
+          id: '${id}_land_1',
+          crop: crop,
+          season: season,
+          totalAcres: acres,
+          nurseryAcres: acres * 0.35,
+          mainAcres: acres * 0.65,
+          details: landDetails,
+          plotLocation: plotLocation,
+        )
+      ],
       status: status,
       stage: stage,
-      nurseryLandAcres: acres * 0.35,
-      mainLandAcres: acres * 0.65,
-      landDetails: landDetails,
       supportPreview: Map<String, String>.from(preview),
     );
   }
@@ -711,17 +716,9 @@ Map<String, dynamic> _farmerToJson(FarmerProfile farmer) {
     'name': farmer.name,
     'phone': farmer.phone,
     'location': farmer.location,
-    'plotLocation': farmer.plotLocation == null
-        ? null
-        : _plotLocationToJson(farmer.plotLocation!),
-    'totalLandAcres': farmer.totalLandAcres,
-    'crop': farmer.crop,
-    'season': farmer.season,
+    'lands': farmer.lands.map(_landRecordToJson).toList(),
     'status': farmer.status.name,
     'stage': farmer.stage.name,
-    'nurseryLandAcres': farmer.nurseryLandAcres,
-    'mainLandAcres': farmer.mainLandAcres,
-    'landDetails': farmer.landDetails,
     'supportPreview': farmer.supportPreview,
   };
 }
@@ -732,27 +729,47 @@ FarmerProfile _farmerFromJson(Map<String, dynamic> json) {
     name: json['name'] as String,
     phone: json['phone'] as String,
     location: json['location'] as String,
-    plotLocation: _plotLocationFromJson(
-      json['plotLocation'] as Map<String, dynamic>?,
-    ),
-    totalLandAcres: (json['totalLandAcres'] as num).toDouble(),
-    crop: json['crop'] as String,
-    season: json['season'] as String,
+    lands: (json['lands'] as List<dynamic>? ?? const [])
+        .map((e) => _landRecordFromJson(e as Map<String, dynamic>))
+        .toList(),
     status: FarmerStatus.values.byName(json['status'] as String),
     stage: FarmerStage.values.byName(json['stage'] as String),
-    nurseryLandAcres: (json['nurseryLandAcres'] as num).toDouble(),
-    mainLandAcres: (json['mainLandAcres'] as num).toDouble(),
-    landDetails: json['landDetails'] as String,
     supportPreview: Map<String, String>.from(
       json['supportPreview'] as Map<String, dynamic>? ?? const {},
     ),
   );
 }
 
+Map<String, dynamic> _landRecordToJson(LandRecord land) {
+  return {
+    'id': land.id,
+    'crop': land.crop,
+    'season': land.season,
+    'totalAcres': land.totalAcres,
+    'nurseryAcres': land.nurseryAcres,
+    'mainAcres': land.mainAcres,
+    'details': land.details,
+    'plotLocation': land.plotLocation == null ? null : _plotLocationToJson(land.plotLocation!),
+  };
+}
+
+LandRecord _landRecordFromJson(Map<String, dynamic> json) {
+  return LandRecord(
+    id: json['id'] as String,
+    crop: json['crop'] as String,
+    season: json['season'] as String,
+    totalAcres: (json['totalAcres'] as num).toDouble(),
+    nurseryAcres: (json['nurseryAcres'] as num).toDouble(),
+    mainAcres: (json['mainAcres'] as num).toDouble(),
+    details: json['details'] as String,
+    plotLocation: _plotLocationFromJson(json['plotLocation'] as Map<String, dynamic>?),
+  );
+}
+
+
 Map<String, dynamic> _plotLocationToJson(PlotLocation location) {
   return {
-    'latitude': location.latitude,
-    'longitude': location.longitude,
+    'polygonPoints': location.polygonPoints.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList(),
     'displayAddress': location.displayAddress,
     'capturedAt': location.capturedAt.toIso8601String(),
   };
@@ -762,9 +779,9 @@ PlotLocation? _plotLocationFromJson(Map<String, dynamic>? json) {
   if (json == null) {
     return null;
   }
+  final pointsRaw = json['polygonPoints'] as List<dynamic>? ?? [];
   return PlotLocation(
-    latitude: (json['latitude'] as num).toDouble(),
-    longitude: (json['longitude'] as num).toDouble(),
+    polygonPoints: pointsRaw.map((e) => PlotCoordinate((e['lat'] as num).toDouble(), (e['lng'] as num).toDouble())).toList(),
     displayAddress: json['displayAddress'] as String?,
     capturedAt: DateTime.tryParse(json['capturedAt'] as String? ?? '') ??
         DateTime.fromMillisecondsSinceEpoch(0),

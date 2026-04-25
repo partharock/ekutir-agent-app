@@ -269,7 +269,7 @@ void main() {
     state.updateSupportDraft(
       state.supportDraft!.copyWith(
         stepIndex: 1,
-        landDetails: 'Anita main field',
+        
         cropContext: 'Rice / Kharif 2026',
         cashAmount: 50000,
       ),
@@ -295,7 +295,7 @@ void main() {
     state.updateSupportDraft(
       state.supportDraft!.copyWith(
         stepIndex: 1,
-        landDetails: 'Parul support plot',
+        
         cropContext: 'Rice / Kharif 2026',
         itemName: 'Seeds',
         quantity: 12,
@@ -322,12 +322,12 @@ void main() {
         name: 'Nina Das',
         phone: '+91 9898989898',
         location: 'Bhaluka',
-        crop: 'Rice',
-        season: 'Kharif 2026',
-        landDetails: 'Nursery beside canal and 8-acre main plot.',
-        totalLandAcres: 12,
-        nurseryLandAcres: 4,
-        mainLandAcres: 8,
+        
+        
+        
+        
+        
+        
       ),
     );
 
@@ -358,12 +358,12 @@ void main() {
           displayAddress: 'Village road plot, Karimpur',
           capturedAt: capturedAt,
         ),
-        crop: 'Rice',
-        season: 'Kharif 2026',
-        landDetails: 'Plot next to irrigation channel.',
-        totalLandAcres: 8,
-        nurseryLandAcres: 3,
-        mainLandAcres: 5,
+        
+        
+        
+        
+        
+        
       ),
     );
 
@@ -388,12 +388,12 @@ void main() {
           name: 'Duplicate Farmer',
           phone: '+91 9876543210',
           location: 'Karimpur',
-          crop: 'Rice',
-          season: 'Kharif 2026',
-          landDetails: 'Duplicate land details.',
-          totalLandAcres: 10,
-          nurseryLandAcres: 4,
-          mainLandAcres: 6,
+          
+          
+          
+          
+          
+          
         ),
       ),
       'A farmer with this phone number already exists.',
@@ -405,12 +405,12 @@ void main() {
           name: 'Mismatch Farmer',
           phone: '+91 9000000001',
           location: 'Karimpur',
-          crop: 'Rice',
-          season: 'Kharif 2026',
-          landDetails: 'Mismatch land details.',
-          totalLandAcres: 10,
-          nurseryLandAcres: 3,
-          mainLandAcres: 6,
+          
+          
+          
+          
+          
+          
         ),
       ),
       'Nursery and main land must add up to total land.',
@@ -422,12 +422,12 @@ void main() {
           name: 'Blocked Farmer',
           phone: '+91 9000000002',
           location: 'Karimpur',
-          crop: 'Rice',
-          season: 'Kharif 2026',
-          landDetails: 'Blocked land details.',
-          totalLandAcres: 10,
-          nurseryLandAcres: 2,
-          mainLandAcres: 6,
+          
+          
+          
+          
+          
+          
         ),
       ),
       isNull,
@@ -449,14 +449,14 @@ void main() {
             displayAddress: 'Village road plot, Karimpur',
             capturedAt: capturedAt,
           ),
-          totalLandAcres: 8,
-          crop: 'Rice',
-          season: 'Kharif 2026',
-          status: FarmerStatus.willing,
+          
+          
+          
+          lands: const [], status: FarmerStatus.willing,
           stage: FarmerStage.willing,
-          nurseryLandAcres: 3,
-          mainLandAcres: 5,
-          landDetails: 'Plot next to irrigation channel.',
+          
+          
+          
           supportPreview: defaultSupportPreview(),
         ),
       ],
@@ -501,12 +501,12 @@ void main() {
           displayAddress: 'Village road plot, Karimpur',
           capturedAt: DateTime(2026, 3, 29, 8, 0),
         ),
-        crop: 'Rice',
-        season: 'Kharif 2026',
-        landDetails: 'Plot next to irrigation channel.',
-        totalLandAcres: 8,
-        nurseryLandAcres: 3,
-        mainLandAcres: 5,
+        
+        
+        
+        
+        
+        
       ),
     );
 
@@ -690,7 +690,7 @@ void main() {
     state.updateSupportDraft(
       state.supportDraft!.copyWith(
         stepIndex: 1,
-        landDetails: 'Primary plot beside collection point.',
+        
         cropContext: 'Rice / Kharif 2026',
         itemName: 'Fertilizer',
         quantity: 4,
@@ -924,12 +924,12 @@ void main() {
         name: 'Rina Paul',
         phone: '+91 9000000100',
         location: 'Trishal',
-        crop: 'Tomato',
-        season: 'Summer 2026',
-        landDetails: '3-acre nursery and 7-acre main field.',
-        totalLandAcres: 10,
-        nurseryLandAcres: 3,
-        mainLandAcres: 7,
+        
+        
+        
+        
+        
+        
       ),
     );
     expect(farmer, isNotNull);
@@ -1079,12 +1079,12 @@ void main() {
           displayAddress: 'Village road plot, Karimpur',
           capturedAt: DateTime(2026, 3, 29, 8, 15),
         ),
-        crop: 'Rice',
-        season: 'Kharif 2026',
-        landDetails: 'Plot next to irrigation channel.',
-        totalLandAcres: 8,
-        nurseryLandAcres: 3,
-        mainLandAcres: 5,
+        
+        
+        
+        
+        
+        
       ),
     );
 

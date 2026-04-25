@@ -348,12 +348,14 @@ class AppState extends ChangeNotifier {
       name: draft.name.trim(),
       phone: normalizePhoneNumber(draft.phone),
       location: draft.location.trim(),
-      plotLocation: draft.plotLocation?.copyWith(
-        displayAddress: draft.plotLocation?.displayAddress?.trim(),
-      ),
-      crop: draft.crop.trim(),
-      season: draft.season.trim(),
-      landDetails: draft.landDetails.trim(),
+      lands: draft.lands.map((l) => l.copyWith(
+        crop: l.crop.trim(),
+        season: l.season.trim(),
+        details: l.details.trim(),
+        plotLocation: l.plotLocation?.copyWith(
+          displayAddress: l.plotLocation?.displayAddress?.trim(),
+        ),
+      )).toList(),
     );
 
     final validationError = validateNewFarmerDraft(sanitized);
@@ -366,22 +368,16 @@ class AppState extends ChangeNotifier {
       name: sanitized.name,
       phone: sanitized.phone,
       location: sanitized.location,
-      plotLocation: sanitized.plotLocation,
-      totalLandAcres: sanitized.totalLandAcres,
-      crop: sanitized.crop,
-      season: sanitized.season,
+      lands: sanitized.lands,
       status: FarmerStatus.willing,
       stage: FarmerStage.willing,
-      nurseryLandAcres: sanitized.nurseryLandAcres,
-      mainLandAcres: sanitized.mainLandAcres,
-      landDetails: sanitized.landDetails,
       supportPreview: defaultSupportPreview(),
       farmerType: sanitized.farmerType,
       groupName: sanitized.groupName,
       groupMembers: sanitized.groupMembers,
       aadharNumber: sanitized.aadharNumber,
       bankDetails: sanitized.bankDetails,
-      uniqueId: 'FMR-${today.year}-${(repository.farmers.length + 1).toString().padLeft(4, '0')}',
+      uniqueId: _generateFarmerUniqueId(),
     );
 
     repository.saveFarmer(farmer);
@@ -1083,6 +1079,30 @@ class AppState extends ChangeNotifier {
     return candidate;
   }
 
+  /// Generates a collision-proof public-facing farmer identifier.
+  /// Format: FMR-YYYYMMDD-XXXX (zero-padded sequence within the day).
+  String _generateFarmerUniqueId() {
+    final now = DateTime.now();
+    final datePart =
+        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    final prefix = 'FMR-$datePart-';
+    final todayCount = repository.farmers
+            .where((f) => (f.uniqueId ?? '').startsWith(prefix))
+            .length +
+        1;
+    return '$prefix${todayCount.toString().padLeft(4, '0')}';
+  }
+
+  /// Generates a collision-proof public-facing land/plot identifier.
+  /// Format: PLT-YYYYMMDD-XXXX.
+  static String generatePlotUniqueId() {
+    final now = DateTime.now();
+    final datePart =
+        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    final millis = now.millisecondsSinceEpoch % 10000;
+    return 'PLT-$datePart-${millis.toString().padLeft(4, '0')}';
+  }
+
   DateTime _timestamp() => DateTime.now();
 
   Future<bool> callFarmer(String farmerId) =>
@@ -1308,10 +1328,12 @@ class AppState extends ChangeNotifier {
     final latestProcurementRecord = latestProcurement(farmer.id);
     final settlement = settlementPreviewFor(farmer.id);
     final activities = activitiesFor(farmer.id);
-    final nextActivity = activities.firstWhere(
-      (item) => item.status != CropActivityStatus.completed,
-      orElse: () => activities.last,
-    );
+    final nextActivity = activities.isEmpty
+        ? null
+        : activities.firstWhere(
+            (item) => item.status != CropActivityStatus.completed,
+            orElse: () => activities.last,
+          );
 
     return {
       'id': farmer.id,
@@ -1359,12 +1381,14 @@ class AppState extends ChangeNotifier {
         'ready': canCompleteSettlement(farmer.id),
         'netSettlement': settlement.netSettlement,
       },
-      'nextActivity': {
-        'title': nextActivity.title,
-        'detail': nextActivity.detail,
-        'status': nextActivity.status.label,
-        'plannedDate': nextActivity.plannedDate.toIso8601String(),
-      },
+      'nextActivity': nextActivity == null
+          ? null
+          : {
+              'title': nextActivity.title,
+              'detail': nextActivity.detail,
+              'status': nextActivity.status.label,
+              'plannedDate': nextActivity.plannedDate.toIso8601String(),
+            },
     };
   }
 

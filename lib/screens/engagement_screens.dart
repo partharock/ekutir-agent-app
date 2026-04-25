@@ -224,13 +224,6 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _locationController = TextEditingController();
-  final _cropController = TextEditingController();
-  final _seasonController = TextEditingController();
-  final _landDetailsController = TextEditingController();
-  final _totalLandController = TextEditingController();
-  final _nurseryLandController = TextEditingController();
-  final _mainLandController = TextEditingController();
-  // New fields
   final _groupNameController = TextEditingController();
   final _aadharController = TextEditingController();
   final _bankHolderController = TextEditingController();
@@ -239,30 +232,14 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
   final _bankIfscController = TextEditingController();
   final _bankUpiController = TextEditingController();
 
+  final List<LandRecord> _lands = [];
   FarmerType _farmerType = FarmerType.individual;
-  bool _defaultsApplied = false;
-  PlotLocation? _plotLocation;
-  bool _isCapturingPlotLocation = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_defaultsApplied) return;
-    _seasonController.text = context.read<AppState>().currentSeason;
-    _defaultsApplied = true;
-  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
     _locationController.dispose();
-    _cropController.dispose();
-    _seasonController.dispose();
-    _landDetailsController.dispose();
-    _totalLandController.dispose();
-    _nurseryLandController.dispose();
-    _mainLandController.dispose();
     _groupNameController.dispose();
     _aadharController.dispose();
     _bankHolderController.dispose();
@@ -272,8 +249,6 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
     _bankUpiController.dispose();
     super.dispose();
   }
-
-  double? _parseLandValue(String value) => double.tryParse(value.trim());
 
   String? _validateRequired(String? value, String label) {
     if (value == null || value.trim().isEmpty) {
@@ -295,70 +270,26 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
     return null;
   }
 
-  String? _validatePositiveLand(String? value, String label) {
-    final parsed = _parseLandValue(value ?? '');
-    if (parsed == null) {
-      return 'Enter $label in acres.';
-    }
-    if (parsed <= 0) {
-      return '$label must be greater than zero.';
-    }
-    return null;
-  }
-
-  String? _validateSplitTotal() {
-    final total = _parseLandValue(_totalLandController.text);
-    final nursery = _parseLandValue(_nurseryLandController.text);
-    final main = _parseLandValue(_mainLandController.text);
-    if (total == null || nursery == null || main == null) {
-      return null;
-    }
-    final difference = (total - nursery - main).abs();
-    if (difference > 0.001) {
-      return 'Nursery land and main land must add up to total land.'.tr;
-    }
-    return null;
-  }
-
-  Future<void> _capturePlotLocation() async {
-    setState(() {
-      _isCapturingPlotLocation = true;
-    });
-
-    try {
-      final plotLocation = await context.read<PlotLocationService>()
-          .capturePlotLocation(
-        context,
-        locationHint: _locationController.text,
-        currentLocation: _plotLocation,
-      );
-      if (plotLocation != null && mounted) {
-        setState(() {
-          _plotLocation = plotLocation;
-        });
-      }
-    } on PlotLocationException catch (error) {
-      if (mounted) {
-        showMockSnackBar(context, error.message);
-      }
-    } catch (_) {
-      if (mounted) {
-        showMockSnackBar(
-          context,
-          'Unable to open the plot location picker.',
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCapturingPlotLocation = false;
-        });
-      }
+  Future<void> _showAddLandSheet() async {
+    final result = await showModalBottomSheet<LandRecord>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => const _AddLandSheet(),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _lands.add(result);
+      });
     }
   }
 
   void _submit(AppState appState) {
     if (!_formKey.currentState!.validate()) return;
+    if (_lands.isEmpty) {
+      showMockSnackBar(context, 'Please add at least one land record.');
+      return;
+    }
 
     final bankDetails = BankDetails(
       accountHolderName: _bankHolderController.text.trim(),
@@ -372,13 +303,7 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
       name: _nameController.text,
       phone: _phoneController.text,
       location: _locationController.text,
-      plotLocation: _plotLocation,
-      crop: _cropController.text,
-      season: _seasonController.text,
-      landDetails: _landDetailsController.text,
-      totalLandAcres: _parseLandValue(_totalLandController.text)!,
-      nurseryLandAcres: _parseLandValue(_nurseryLandController.text)!,
-      mainLandAcres: _parseLandValue(_mainLandController.text)!,
+      lands: _lands,
       farmerType: _farmerType,
       groupName: _farmerType == FarmerType.group ? _groupNameController.text.trim() : null,
       aadharNumber: _aadharController.text.trim().isEmpty ? null : _aadharController.text.trim(),
@@ -411,7 +336,7 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
           style: filledButtonStyle(),
           onPressed: () => _submit(appState),
           child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 16),
             child: Text('Save Farmer'.tr),
           ),
         ),
@@ -422,7 +347,7 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Farmer Type ─────────────────────────────────────────────
+            // Farmer Type
             Text('Farmer Type'.tr, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             SectionCard(
@@ -456,7 +381,8 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            // ── Basic Details ───────────────────────────────────────────
+            
+            // Basic Details
             Text('Basic Details'.tr, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             SectionCard(
@@ -473,8 +399,7 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
                     key: const Key('new_farmer_phone_field'),
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    decoration:
-                        const InputDecoration(labelText: 'Mobile Number'),
+                    decoration: const InputDecoration(labelText: 'Mobile Number'),
                     validator: (value) => _validatePhone(appState, value),
                   ),
                   const SizedBox(height: 12),
@@ -484,157 +409,76 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
                     decoration: const InputDecoration(labelText: 'Location'),
                     validator: (value) => _validateRequired(value, 'Location'),
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    key: const Key('new_farmer_crop_field'),
-                    controller: _cropController,
-                    decoration: const InputDecoration(labelText: 'Crop'),
-                    validator: (value) => _validateRequired(value, 'Crop'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    key: const Key('new_farmer_season_field'),
-                    controller: _seasonController,
-                    decoration: const InputDecoration(labelText: 'Season'),
-                    validator: (value) => _validateRequired(value, 'Season'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    key: const Key('new_farmer_land_details_field'),
-                    controller: _landDetailsController,
-                    maxLines: 3,
-                    decoration:
-                        const InputDecoration(labelText: 'Land Details'),
-                    validator: (value) =>
-                        _validateRequired(value, 'Land details'),
-                  ),
                 ],
               ),
             ),
             const SizedBox(height: 18),
-            Text(
-              'Plot GPS Location',
-              style: Theme.of(context).textTheme.titleLarge,
+            
+            // Lands
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Lands'.tr, style: Theme.of(context).textTheme.titleLarge),
+                TextButton.icon(
+                  onPressed: _showAddLandSheet,
+                  icon: const Icon(Icons.add),
+                  label: Text('Add Land'.tr),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Capture the exact plot point on a Mappls map. The village/location field above stays unchanged for search and list views.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      key: const Key('capture_plot_location_button'),
-                      onPressed:
-                          _isCapturingPlotLocation ? null : _capturePlotLocation,
-                      icon: _isCapturingPlotLocation
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              _plotLocation == null
-                                  ? Icons.location_searching_outlined
-                                  : Icons.edit_location_alt_outlined,
+            if (_lands.isEmpty)
+              const EmptyStateCard(message: 'No lands added yet. Add a land plot to continue.')
+            else
+              ..._lands.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final land = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: SectionCard(
+                    useInnerPadding: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Plot ${idx + 1}: ${land.crop}',
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                      label: Text(
-                        _isCapturingPlotLocation
-                            ? 'Opening Map...'
-                            : _plotLocation == null
-                                ? 'Capture Plot on Map'
-                                : 'Retake Plot Location',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Saved Plot',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _plotLocation?.displayAddress ?? 'Not captured',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => setState(() => _lands.removeAt(idx)),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 8),
+                        Text('Total: ${land.totalAcres} acres • ${land.season}'),
+                        if (land.plotLocation != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.map, size: 16, color: AppColors.brandGreen),
+                                const SizedBox(width: 4),
+                                Text(
+                                  land.plotLocation!.coordinatesLabel,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.brandGreen),
+                                ),
+                              ],
+                            ),
+                          )
+                      ],
+                    ),
                   ),
-                  if (_plotLocation != null) ...[
-                    const SizedBox(height: 10),
-                    InfoPair(
-                      label: 'Coordinates'.tr,
-                      value: _plotLocation!.coordinatesLabel,
-                    ),
-                    const SizedBox(height: 10),
-                    InfoPair(
-                      label: 'Captured At'.tr,
-                      value: formatDateTime(_plotLocation!.capturedAt),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+                );
+              }),
             const SizedBox(height: 18),
-            Text(
-              'Land Split',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            SectionCard(
-              child: Column(
-                children: [
-                  TextFormField(
-                    key: const Key('new_farmer_total_land_field'),
-                    controller: _totalLandController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration:
-                        const InputDecoration(labelText: 'Total Land (acres)'),
-                    onChanged: (_) => setState(() {}),
-                    validator: (value) =>
-                        _validatePositiveLand(value, 'Total land') ??
-                        _validateSplitTotal(),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    key: const Key('new_farmer_nursery_land_field'),
-                    controller: _nurseryLandController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                        labelText: 'Nursery Land (acres)'),
-                    onChanged: (_) => setState(() {}),
-                    validator: (value) =>
-                        _validatePositiveLand(value, 'Nursery land') ??
-                        _validateSplitTotal(),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    key: const Key('new_farmer_main_land_field'),
-                    controller: _mainLandController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration:
-                        const InputDecoration(labelText: 'Main Land (acres)'),
-                    onChanged: (_) => setState(() {}),
-                    validator: (value) =>
-                        _validatePositiveLand(value, 'Main land') ??
-                        _validateSplitTotal(),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            // ── Identity Details ──────────────────────────────────────
+            
+            // Identity
             Text('Identity'.tr, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             SectionCard(
@@ -650,7 +494,8 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            // ── Bank Details ──────────────────────────────────────────
+            
+            // Bank Details
             Text('Bank Details'.tr, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 4),
             Text(
@@ -698,6 +543,199 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddLandSheet extends StatefulWidget {
+  const _AddLandSheet();
+  @override
+  State<_AddLandSheet> createState() => _AddLandSheetState();
+}
+
+class _AddLandSheetState extends State<_AddLandSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _cropController = TextEditingController();
+  final _seasonController = TextEditingController();
+  final _detailsController = TextEditingController();
+  final _totalController = TextEditingController();
+  final _nurseryController = TextEditingController();
+  final _mainController = TextEditingController();
+  
+  PlotLocation? _plotLocation;
+  bool _isCapturingPlotLocation = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_seasonController.text.isEmpty) {
+      _seasonController.text = context.read<AppState>().currentSeason;
+    }
+  }
+
+  @override
+  void dispose() {
+    _cropController.dispose();
+    _seasonController.dispose();
+    _detailsController.dispose();
+    _totalController.dispose();
+    _nurseryController.dispose();
+    _mainController.dispose();
+    super.dispose();
+  }
+
+  double? _parse(String v) => double.tryParse(v.trim());
+
+  String? _validateRequired(String? v, String label) =>
+      v == null || v.trim().isEmpty ? '$label is required.' : null;
+
+  String? _validatePositive(String? v, String label) {
+    final p = _parse(v ?? '');
+    if (p == null) return 'Enter $label in acres.';
+    if (p <= 0) return '$label must be > 0.';
+    return null;
+  }
+
+  String? _validateSplit() {
+    final t = _parse(_totalController.text);
+    final n = _parse(_nurseryController.text);
+    final m = _parse(_mainController.text);
+    if (t != null && n != null && m != null) {
+      if ((t - n - m).abs() > 0.001) {
+        return 'Nursery + Main must equal Total.';
+      }
+    }
+    return null;
+  }
+
+  Future<void> _capturePlotLocation() async {
+    setState(() => _isCapturingPlotLocation = true);
+    try {
+      final plotLocation = await context.read<PlotLocationService>().capturePlotLocation(
+        context,
+        locationHint: 'Capture Plot Bounds',
+        currentLocation: _plotLocation,
+      );
+      if (plotLocation != null && mounted) {
+        setState(() => _plotLocation = plotLocation);
+      }
+    } catch (_) {
+      if (mounted) showMockSnackBar(context, 'Unable to open map.');
+    } finally {
+      if (mounted) setState(() => _isCapturingPlotLocation = false);
+    }
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    final land = LandRecord(
+      id: AppState.generatePlotUniqueId(),
+      crop: _cropController.text.trim(),
+      season: _seasonController.text.trim(),
+      details: _detailsController.text.trim(),
+      totalAcres: _parse(_totalController.text)!,
+      nurseryAcres: _parse(_nurseryController.text)!,
+      mainAcres: _parse(_mainController.text)!,
+      plotLocation: _plotLocation,
+    );
+    Navigator.of(context).pop(land);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 16, right: 16, top: 24,
+      ),
+      child: Form(
+        key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Add Land Plot', style: Theme.of(context).textTheme.headlineSmall),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _cropController,
+              decoration: const InputDecoration(labelText: 'Crop'),
+              validator: (v) => _validateRequired(v, 'Crop'),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _seasonController,
+              decoration: const InputDecoration(labelText: 'Season'),
+              validator: (v) => _validateRequired(v, 'Season'),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _detailsController,
+              maxLines: 2,
+              decoration: const InputDecoration(labelText: 'Land Details (Optional)'),
+            ),
+            const SizedBox(height: 16),
+            Text('Acreage Summary', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _totalController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Total'),
+                    onChanged: (_) => setState((){}),
+                    validator: (v) => _validatePositive(v, 'Total') ?? _validateSplit(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    controller: _nurseryController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Nursery'),
+                    onChanged: (_) => setState((){}),
+                    validator: (v) => _validatePositive(v, 'Nursery') ?? _validateSplit(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    controller: _mainController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Main'),
+                    onChanged: (_) => setState((){}),
+                    validator: (v) => _validatePositive(v, 'Main') ?? _validateSplit(),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _isCapturingPlotLocation ? null : _capturePlotLocation,
+              icon: _isCapturingPlotLocation 
+                  ? const SizedBox(width:16, height:16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.location_on),
+              label: Text(_plotLocation == null ? 'Capture Plot Map' : 'Map Captured (${_plotLocation!.polygonPoints.length} points) - Retake'),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _save,
+                child: const Text('Add to Farmer'),
+              ),
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),

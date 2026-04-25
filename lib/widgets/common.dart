@@ -69,6 +69,111 @@ class BrandMarkPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+class FfBioworksLogo extends StatelessWidget {
+  const FfBioworksLogo({super.key, this.width = 144});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final markSize = width * 0.42;
+    return SizedBox(
+      width: width,
+      height: width * 0.56,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: markSize,
+            height: markSize * 0.72,
+            child: CustomPaint(painter: _FfLeafPainter()),
+          ),
+          const SizedBox(height: 6),
+          Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(
+                  text: 'FF ',
+                  style: TextStyle(color: AppColors.brandBlue),
+                ),
+                TextSpan(
+                  text: 'Bioworks',
+                  style: TextStyle(color: AppColors.brandGreenDark),
+                ),
+              ],
+            ),
+            style: TextStyle(
+              fontSize: width * 0.15,
+              fontWeight: FontWeight.w800,
+              height: 1,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FfLeafPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final blue = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.height * 0.14
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = AppColors.brandBlue;
+    final green = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.height * 0.16
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = AppColors.brandGreen;
+
+    final left = Path()
+      ..moveTo(size.width * 0.10, size.height * 0.54)
+      ..quadraticBezierTo(
+        size.width * 0.26,
+        size.height * 0.08,
+        size.width * 0.50,
+        size.height * 0.34,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.34,
+        size.height * 0.86,
+        size.width * 0.10,
+        size.height * 0.54,
+      );
+    final right = Path()
+      ..moveTo(size.width * 0.50, size.height * 0.34)
+      ..quadraticBezierTo(
+        size.width * 0.74,
+        size.height * 0.08,
+        size.width * 0.90,
+        size.height * 0.54,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.66,
+        size.height * 0.86,
+        size.width * 0.50,
+        size.height * 0.34,
+      );
+    final stem = Path()
+      ..moveTo(size.width * 0.26, size.height * 0.58)
+      ..lineTo(size.width * 0.44, size.height * 0.58)
+      ..lineTo(size.width * 0.60, size.height * 0.42)
+      ..lineTo(size.width * 0.76, size.height * 0.42);
+
+    canvas.drawPath(left, blue);
+    canvas.drawPath(right, blue);
+    canvas.drawPath(stem, green);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class EmptyStateCard extends StatelessWidget {
   const EmptyStateCard({
     super.key,

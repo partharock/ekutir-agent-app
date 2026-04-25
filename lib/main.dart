@@ -16,6 +16,7 @@ import 'screens/harvest_screens.dart';
 import 'screens/crop_plan_screen.dart';
 import 'screens/misa_ai_screen.dart';
 import 'screens/farmer_data_bank_screen.dart';
+import 'screens/profile_screen.dart';
 import 'services/misa_service.dart';
 import 'services/plot_location_service.dart';
 
@@ -71,7 +72,7 @@ Widget buildEkAcreGrowthApp({
     providers: [
       ChangeNotifierProvider<AppState>.value(value: state),
       Provider<PlotLocationService>.value(
-        value: plotLocationService ?? const MapplsPlotLocationService(),
+        value: plotLocationService ?? const GoogleMapsPlotLocationService(),
       ),
     ],
     child: EkAcreGrowthApp(appState: state),
@@ -151,6 +152,14 @@ GoRouter _createRouter(AppState appState) {
           GoRoute(
             path: '/home',
             builder: (context, state) => const HomeScreen(),
+          ),
+          GoRoute(
+            path: '/updates',
+            builder: (context, state) => const UpdatesScreen(),
+          ),
+          GoRoute(
+            path: '/profile',
+            builder: (context, state) => const ProfileScreen(),
           ),
           GoRoute(
             path: '/engage',
@@ -392,7 +401,7 @@ ThemeData buildAppTheme() {
   );
 }
 
-enum AppTab { home, engage, support, harvest, cropPlan, misaAi }
+enum AppTab { home, engage, updates, profile }
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.location, required this.child});
@@ -406,16 +415,22 @@ class AppShell extends StatelessWidget {
       return AppTab.engage;
     }
     if (location.startsWith('/support')) {
-      return AppTab.support;
+      return AppTab.updates;
     }
     if (location.startsWith('/harvest')) {
-      return AppTab.harvest;
+      return AppTab.updates;
     }
     if (location.startsWith('/crop-plan')) {
-      return AppTab.cropPlan;
+      return AppTab.updates;
     }
     if (location.startsWith('/misa-ai')) {
-      return AppTab.misaAi;
+      return AppTab.home;
+    }
+    if (location.startsWith('/updates')) {
+      return AppTab.updates;
+    }
+    if (location.startsWith('/profile')) {
+      return AppTab.profile;
     }
     return AppTab.home;
   }
@@ -435,17 +450,11 @@ class AppShell extends StatelessWidget {
             case AppTab.engage:
               context.go('/engage');
               break;
-            case AppTab.support:
-              context.go('/support');
+            case AppTab.updates:
+              context.go('/updates');
               break;
-            case AppTab.harvest:
-              context.go('/harvest');
-              break;
-            case AppTab.cropPlan:
-              context.go('/crop-plan');
-              break;
-            case AppTab.misaAi:
-              context.go('/misa-ai');
+            case AppTab.profile:
+              context.go('/profile');
               break;
           }
         },
@@ -461,24 +470,14 @@ class AppShell extends StatelessWidget {
             label: 'Engage'.tr,
           ),
           NavigationDestination(
-            icon: Icon(Icons.monetization_on_outlined),
-            selectedIcon: Icon(Icons.monetization_on),
-            label: 'Support'.tr,
+            icon: Icon(Icons.circle_notifications_outlined),
+            selectedIcon: Icon(Icons.circle_notifications),
+            label: 'Updates'.tr,
           ),
           NavigationDestination(
-            icon: Icon(Icons.agriculture_outlined),
-            selectedIcon: Icon(Icons.agriculture),
-            label: 'Harvest'.tr,
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.assignment_outlined),
-            selectedIcon: Icon(Icons.assignment),
-            label: 'Crop Plan'.tr,
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.smart_toy_outlined),
-            selectedIcon: Icon(Icons.smart_toy),
-            label: 'MISA AI'.tr,
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile'.tr,
           ),
         ],
       ),

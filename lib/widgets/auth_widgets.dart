@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'device_chrome.dart';
 
 class AuthBackground extends StatelessWidget {
   const AuthBackground({
@@ -39,7 +40,7 @@ class AuthBackground extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(
-                    alpha: backgroundAssetPath == null ? 0.12 : 0.18,
+                    alpha: backgroundAssetPath == null ? 0.12 : 0.08,
                   ),
                 ),
               ),
@@ -63,6 +64,12 @@ class AuthBackground extends StatelessWidget {
               ),
             ],
             child,
+            const Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: SimulatedStatusBar(backgroundColor: Colors.transparent),
+            ),
           ],
         ),
       ),
