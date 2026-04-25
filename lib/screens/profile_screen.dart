@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
 import '../theme/app_colors.dart';
 import '../utils/translation_service.dart';
 import '../widgets/device_chrome.dart';
+
+// ─── Profile Screen ───────────────────────────────────────────────────────────
+// Matches Figma "My Profile" screen:
+// Centered Montserrat title + 3 menu rows (User Account, Settings, Logout)
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -20,18 +25,20 @@ class ProfileScreen extends StatelessWidget {
         child: Stack(
           children: [
             Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(
-                  height: MediaQuery.paddingOf(context).top == 0 ? 82 : 30,
-                ),
+                const SizedBox(height: 52), // status bar space
+                // Title: Montserrat 700 24px #1C1B1F
                 Text(
                   'My Profile'.tr,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontSize: 24,
-                        color: const Color(0xFF1C1B1F),
-                      ),
+                  style: GoogleFonts.montserrat(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1C1B1F),
+                  ),
                 ),
-                const SizedBox(height: 34),
+                const SizedBox(height: 30),
+                // Menu rows
                 _ProfileMenuItem(
                   icon: Icons.person_outline,
                   label: 'User Account'.tr,
@@ -43,7 +50,7 @@ class ProfileScreen extends StatelessWidget {
                   onTap: () {},
                 ),
                 _ProfileMenuItem(
-                  icon: Icons.power_settings_new,
+                  icon: Icons.power_settings_new_outlined,
                   label: 'Logout'.tr,
                   onTap: () {
                     appState.isAuthenticated = false;
@@ -82,6 +89,7 @@ class _ProfileMenuItem extends StatelessWidget {
       onTap: onTap,
       child: SizedBox(
         height: 48,
+        width: double.infinity,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
@@ -90,10 +98,12 @@ class _ProfileMenuItem extends StatelessWidget {
               const SizedBox(width: 12),
               Text(
                 label,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1C1B1F),
-                    ),
+                style: const TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF1C1B1F),
+                ),
               ),
             ],
           ),
@@ -102,6 +112,8 @@ class _ProfileMenuItem extends StatelessWidget {
     );
   }
 }
+
+// ─── Updates Screen ───────────────────────────────────────────────────────────
 
 class UpdatesScreen extends StatelessWidget {
   const UpdatesScreen({super.key});
@@ -128,11 +140,11 @@ class UpdatesScreen extends StatelessWidget {
                   Center(
                     child: Text(
                       'Updates'.tr,
-                      style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontSize: 24,
-                                color: const Color(0xFF1C1B1F),
-                              ),
+                      style: GoogleFonts.montserrat(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1C1B1F),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 30),

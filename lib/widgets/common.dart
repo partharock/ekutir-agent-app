@@ -1,6 +1,7 @@
 import 'package:ekutir_agent_app/utils/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 
@@ -76,41 +77,10 @@ class FfBioworksLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final markSize = width * 0.42;
-    return SizedBox(
+    return Image.asset(
+      'assets/reference/app_logo.png',
       width: width,
-      height: width * 0.56,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: markSize,
-            height: markSize * 0.72,
-            child: CustomPaint(painter: _FfLeafPainter()),
-          ),
-          const SizedBox(height: 6),
-          Text.rich(
-            TextSpan(
-              children: [
-                const TextSpan(
-                  text: 'FF ',
-                  style: TextStyle(color: AppColors.brandBlue),
-                ),
-                TextSpan(
-                  text: 'Bioworks',
-                  style: TextStyle(color: AppColors.brandGreenDark),
-                ),
-              ],
-            ),
-            style: TextStyle(
-              fontSize: width * 0.15,
-              fontWeight: FontWeight.w800,
-              height: 1,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
+      fit: BoxFit.contain,
     );
   }
 }
@@ -235,16 +205,17 @@ class SectionCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: highlighted ? AppColors.brandGreen : AppColors.cardBorder,
           width: highlighted ? 1.4 : 1,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x0D111827),
-            blurRadius: 12,
-            offset: Offset(0, 4),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 14.1,
+            spreadRadius: 3,
+            offset: const Offset(0, 0),
           ),
         ],
       ),
@@ -398,10 +369,11 @@ class PageScaffold extends StatelessWidget {
                           ),
                         Text(
                           title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(fontSize: 20),
+                          style: GoogleFonts.montserrat(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1C1919),
+                          ),
                         ),
                       ],
                     ),

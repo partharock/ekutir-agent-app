@@ -38,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthBackground(
-      backgroundAssetPath: 'assets/reference/auth_splash_blur.png',
+      backgroundAssetPath: 'assets/reference/app_background.jpg',
       child: Center(
         child: Card(
           child: Padding(

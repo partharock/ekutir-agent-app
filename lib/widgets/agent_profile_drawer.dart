@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
-import '../theme/app_colors.dart';
 import '../utils/translation_service.dart';
 
 class AgentProfileDrawer extends StatelessWidget {
@@ -17,137 +17,154 @@ class AgentProfileDrawer extends StatelessWidget {
     final landProgress = (landAchieved / appState.targetLandAcres).clamp(0.0, 1.0);
 
     return Drawer(
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+      ),
       child: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Header ────────────────────────────────────────────────
+            // ── Header Section ────────────────────────────────────────
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-              width: double.infinity,
-              decoration: const BoxDecoration(color: AppColors.brandBlueLight),
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF4F7FF),
+              ),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // Avatar
                   Container(
-                    width: 88,
-                    height: 88,
+                    width: 68,
+                    height: 68,
                     decoration: BoxDecoration(
-                      color: AppColors.brandBlue,
+                      color: const Color(0xFFDFE5F6),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
+                      border: Border.all(color: Colors.black, width: 1.42),
                     ),
-                    child: const Icon(Icons.person, size: 52, color: Colors.white),
+                    child: const Icon(Icons.person, size: 40, color: Color(0xFF294190)),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
+                  // Name
                   Text(
                     appState.agentName,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: AppColors.brandBlue,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.brandBlue,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      appState.agentType,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF294190),
                     ),
                   ),
                   const SizedBox(height: 6),
+                  // Role badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF294190),
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: Text(
+                      appState.agentType,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Org
                   Text(
                     appState.agentOrg,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.brandBlue,
-                        ),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF1C1919),
+                    ),
                   ),
                 ],
               ),
             ),
-            // ── Details ───────────────────────────────────────────────
+
+            // ── Details List ─────────────────────────────────────────
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  const SizedBox(height: 16),
-                  _ProfileDetailItem(
+                  _DrawerDetailRow(
                     icon: Icons.badge_outlined,
-                    title: 'Agent ID'.tr,
+                    label: 'agent id'.tr,
                     value: 'AGN-89234',
                   ),
-                  _ProfileDetailItem(
+                  _DrawerDetailRow(
                     icon: Icons.phone_outlined,
-                    title: 'Phone Number'.tr,
-                    value: '+91 98765 43210',
+                    label: 'phone number'.tr,
+                    value: '+91 12345 56789',
                   ),
-                  _ProfileDetailItem(
+                  _DrawerDetailRow(
+                    icon: Icons.mail_outline,
+                    label: 'email address'.tr,
+                    value: 'ravi@domain.com',
+                  ),
+                  _DrawerDetailRow(
                     icon: Icons.location_on_outlined,
-                    title: 'Locality'.tr,
+                    label: 'location'.tr,
                     value: appState.locality,
                   ),
-                  _ProfileDetailItem(
+                  _DrawerDetailRow(
+                    icon: Icons.domain_outlined,
+                    label: 'organization name'.tr,
+                    value: appState.agentOrg,
+                  ),
+                  _DrawerDetailRow(
                     icon: Icons.agriculture_outlined,
-                    title: 'Primary Crop'.tr,
+                    label: 'CROP'.tr,
                     value: appState.agentCrop,
                   ),
-                  _ProfileDetailItem(
+                  _DrawerDetailRow(
                     icon: Icons.calendar_month_outlined,
-                    title: 'Crop Duration'.tr,
+                    label: 'CROP DURATION'.tr,
                     value: appState.cropDuration,
                   ),
-                  const SizedBox(height: 16),
-                  const Divider(),
+
+                  const Divider(height: 32, indent: 16, endIndent: 16),
+
+                  // ── Target Tracker ─────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'Target Tracker'.tr,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1C1B1F),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
 
-                  // ── Target Progress ─────────────────────────────────
-                  Text(
-                    'Season Target'.tr,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 14),
-                  _TargetProgressRow(
-                    icon: Icons.groups_outlined,
-                    label: 'Farmers'.tr,
+                  _TargetTrackerCard(
+                    icon: Icons.person_outline,
+                    label: 'Farmer Target'.tr,
                     achieved: farmerAchieved,
                     target: appState.targetFarmers,
                     progress: farmerProgress,
                     unit: '',
                   ),
                   const SizedBox(height: 12),
-                  _TargetProgressRow(
-                    icon: Icons.crop_square_outlined,
-                    label: 'Land'.tr,
+                  _TargetTrackerCard(
+                    icon: Icons.map_outlined,
+                    label: 'Land Target'.tr,
                     achieved: landAchieved.toInt(),
                     target: appState.targetLandAcres.toInt(),
                     progress: landProgress,
                     unit: 'ac',
                   ),
-                  const SizedBox(height: 20),
-                  const Divider(),
-                  const SizedBox(height: 10),
-                  ListTile(
-                    leading: const Icon(Icons.exit_to_app, color: AppColors.danger),
-                    title: Text(
-                      'Log Out'.tr,
-                      style: const TextStyle(
-                        color: AppColors.danger,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onTap: () => Navigator.of(context).pop(),
-                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -158,40 +175,49 @@ class AgentProfileDrawer extends StatelessWidget {
   }
 }
 
-// ─── _ProfileDetailItem ───────────────────────────────────────────────────────
+// ─── Drawer Row ───────────────────────────────────────────────────────────────
 
-class _ProfileDetailItem extends StatelessWidget {
-  const _ProfileDetailItem({
+class _DrawerDetailRow extends StatelessWidget {
+  const _DrawerDetailRow({
     required this.icon,
-    required this.title,
+    required this.label,
     required this.value,
   });
 
   final IconData icon;
-  final String title;
+  final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.textSecondary, size: 22),
-          const SizedBox(width: 14),
+          Icon(icon, size: 24, color: const Color(0xFF1C1B1F)),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                  label.toLowerCase(),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF757575),
+                  ),
                 ),
                 const SizedBox(height: 2),
-                Text(value, style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1C1B1F),
+                  ),
+                ),
               ],
             ),
           ),
@@ -201,10 +227,10 @@ class _ProfileDetailItem extends StatelessWidget {
   }
 }
 
-// ─── _TargetProgressRow ───────────────────────────────────────────────────────
+// ─── Target Tracker Card ─────────────────────────────────────────────────────
 
-class _TargetProgressRow extends StatelessWidget {
-  const _TargetProgressRow({
+class _TargetTrackerCard extends StatelessWidget {
+  const _TargetTrackerCard({
     required this.icon,
     required this.label,
     required this.achieved,
@@ -222,47 +248,68 @@ class _TargetProgressRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pct = (progress * 100).round();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 16, color: AppColors.textSecondary),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
-            ),
-            Text(
-              '$achieved${unit.isNotEmpty ? ' $unit' : ''} / $target${unit.isNotEmpty ? ' $unit' : ''}',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+    final u = unit.isNotEmpty ? ' $unit' : '';
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDADCE0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: const Color(0xFF1C1B1F)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1C1B1F),
                   ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              '$pct%',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: progress >= 1.0 ? AppColors.brandGreenDark : AppColors.brandBlue,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 6,
-            backgroundColor: AppColors.cardBorder,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              progress >= 1.0 ? AppColors.brandGreen : AppColors.brandBlue,
-            ),
+                ),
+              ),
+              Text(
+                '$achieved$u / $target$u',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF1C1B1F),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          // Progress bar
+          Stack(
+            children: [
+              // Background track
+              Container(
+                height: 12,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAEAEA),
+                  borderRadius: BorderRadius.circular(33),
+                ),
+              ),
+              // Fill
+              FractionallySizedBox(
+                widthFactor: progress.clamp(0.0, 1.0),
+                child: Container(
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4F8506),
+                    borderRadius: BorderRadius.circular(33),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

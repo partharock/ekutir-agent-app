@@ -28,7 +28,7 @@ class _PhoneSignInScreenState extends State<PhoneSignInScreen> {
     final canContinue = _controller.text.trim().length >= 10;
 
     return AuthBackground(
-      backgroundAssetPath: 'assets/reference/auth_signin_blur.png',
+      backgroundAssetPath: 'assets/reference/app_background.jpg',
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
@@ -123,7 +123,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     final value = _controller.text.replaceAll(RegExp(r'[^0-9]'), '');
 
     return AuthBackground(
-      backgroundAssetPath: 'assets/reference/auth_signin_blur.png',
+      backgroundAssetPath: 'assets/reference/app_background.jpg',
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
