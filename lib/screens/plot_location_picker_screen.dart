@@ -2,117 +2,73 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:ekutir_agent_app/utils/translation_service.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 
 import '../models/farmer.dart';
 import '../theme/app_colors.dart';
 import '../widgets/common.dart';
 
-/// Polygon-mode map picker using Google Maps Flutter.
-/// Tap up to 4 corners on the map to define a plot boundary.
-/// The polygon is filled and each corner is numbered.
+/// Polygon-mode plot picker using flutter_map + ESRI World Imagery satellite tiles.
+/// No API key required. Tap up to 4 corners to define the plot boundary.
 class PlotLocationPickerScreen extends StatefulWidget {
   const PlotLocationPickerScreen({
     super.key,
     required this.initialTarget,
     required this.initialZoom,
-    required this.enableMyLocation,
   });
 
   final LatLng initialTarget;
   final double initialZoom;
-  final bool enableMyLocation;
 
   @override
   State<PlotLocationPickerScreen> createState() =>
       _PlotLocationPickerScreenState();
 }
 
-class _PlotLocationPickerScreenState
-    extends State<PlotLocationPickerScreen> {
-  GoogleMapController? _mapController;
+class _PlotLocationPickerScreenState extends State<PlotLocationPickerScreen> {
+  late final MapController _mapController;
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
 
   final List<LatLng> _points = [];
-  Set<Marker> _markers = {};
-  Set<Polygon> _polygons = {};
-
   bool _isConfirming = false;
   bool _isSearching = false;
   String? _searchFeedback;
   List<_Suggestion> _suggestions = const [];
 
+  // ESRI World Imagery tile URL — free, no API key needed
+  static const String _esriTileUrl =
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+  }
+
   @override
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
-    _mapController?.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
   // ─── Map tap ─────────────────────────────────────────────────────────────
 
-  void _onMapTap(LatLng latLng) {
+  void _onMapTap(TapPosition _, LatLng latLng) {
     if (_points.length >= 4) return;
-    setState(() {
-      _points.add(latLng);
-      _rebuildOverlays();
-    });
+    setState(() => _points.add(latLng));
   }
 
-  void _resetPolygon() {
-    setState(() {
-      _points.clear();
-      _markers = {};
-      _polygons = {};
-    });
-  }
+  void _resetPolygon() => setState(() => _points.clear());
 
-  void _rebuildOverlays() {
-    final markers = <Marker>{};
-    for (var i = 0; i < _points.length; i++) {
-      markers.add(
-        Marker(
-          markerId: MarkerId('pt_$i'),
-          position: _points[i],
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            _markerHue(i),
-          ),
-          infoWindow: InfoWindow(title: 'Point ${i + 1}'),
-        ),
-      );
-    }
-
-    final polygons = <Polygon>{};
-    if (_points.length >= 3) {
-      final ring = [..._points, _points.first];
-      polygons.add(
-        Polygon(
-          polygonId: const PolygonId('plot'),
-          points: ring,
-          fillColor: AppColors.brandGreen.withAlpha(60),
-          strokeColor: AppColors.brandGreen,
-          strokeWidth: 2,
-        ),
-      );
-    }
-
-    _markers = markers;
-    _polygons = polygons;
-  }
-
-  double _markerHue(int index) {
-    const hues = [
-      BitmapDescriptor.hueGreen,
-      BitmapDescriptor.hueYellow,
-      BitmapDescriptor.hueOrange,
-      BitmapDescriptor.hueRed,
-    ];
-    return hues[index % hues.length];
+  void _undoLastPoint() {
+    if (_points.isEmpty) return;
+    setState(() => _points.removeLast());
   }
 
   // ─── Search ───────────────────────────────────────────────────────────────
@@ -128,7 +84,8 @@ class _PlotLocationPickerScreenState
       });
       return;
     }
-    _searchDebounce = Timer(const Duration(milliseconds: 500), () => _runSearch(query));
+    _searchDebounce =
+        Timer(const Duration(milliseconds: 500), () => _runSearch(query));
   }
 
   Future<void> _runSearch(String query) async {
@@ -139,21 +96,18 @@ class _PlotLocationPickerScreenState
       _suggestions = const [];
     });
     try {
-      // Use OpenStreetMap Nominatim — no API key needed, works on web & mobile.
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'q': query,
         'format': 'jsonv2',
         'limit': '6',
         'countrycodes': 'in',
       });
-      final response = await http.get(uri,
-          headers: const {
-            'Accept': 'application/json',
-            'User-Agent': 'ekutir-agent-app/1.0',
-          });
+      final response = await http.get(uri, headers: const {
+        'Accept': 'application/json',
+        'User-Agent': 'ekutir-agent-app/1.0',
+      });
 
       if (!mounted) return;
-
       final decoded = jsonDecode(response.body);
       if (decoded is! List) throw Exception('bad response');
 
@@ -191,7 +145,7 @@ class _PlotLocationPickerScreenState
     );
   }
 
-  Future<void> _selectSuggestion(_Suggestion s) async {
+  void _selectSuggestion(_Suggestion s) {
     _searchDebounce?.cancel();
     FocusScope.of(context).unfocus();
     setState(() {
@@ -199,9 +153,7 @@ class _PlotLocationPickerScreenState
       _suggestions = const [];
       _searchFeedback = null;
     });
-    await _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(s.target, 17),
-    );
+    _mapController.move(s.target, 17);
   }
 
   // ─── Confirm ──────────────────────────────────────────────────────────────
@@ -213,23 +165,21 @@ class _PlotLocationPickerScreenState
     String? displayAddress;
     try {
       final center = _centroid(_points);
-      // Reverse geocode via Nominatim (no key required).
       final uri = Uri.https('nominatim.openstreetmap.org', '/reverse', {
         'lat': '${center.latitude}',
         'lon': '${center.longitude}',
         'format': 'jsonv2',
       });
-      final response = await http.get(uri,
-          headers: const {
-            'Accept': 'application/json',
-            'User-Agent': 'ekutir-agent-app/1.0',
-          });
+      final response = await http.get(uri, headers: const {
+        'Accept': 'application/json',
+        'User-Agent': 'ekutir-agent-app/1.0',
+      });
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         displayAddress = data['display_name'] as String?;
       }
     } catch (_) {
-      // Fallback: use coordinates string.
+      // Use coordinates as fallback
     }
 
     if (!mounted) return;
@@ -246,7 +196,8 @@ class _PlotLocationPickerScreenState
 
   LatLng _centroid(List<LatLng> pts) {
     final lat = pts.map((p) => p.latitude).reduce((a, b) => a + b) / pts.length;
-    final lng = pts.map((p) => p.longitude).reduce((a, b) => a + b) / pts.length;
+    final lng =
+        pts.map((p) => p.longitude).reduce((a, b) => a + b) / pts.length;
     return LatLng(lat, lng);
   }
 
@@ -255,11 +206,13 @@ class _PlotLocationPickerScreenState
   @override
   Widget build(BuildContext context) {
     final canConfirm = _points.length == 4 && !_isConfirming;
+    final remaining = 4 - _points.length;
 
     return PageScaffold(
       title: 'Plot Bounds'.tr,
       showBack: true,
-      description: 'Tap the map to place 4 corner points. A polygon will be drawn automatically.',
+      description:
+          'Tap the map to place 4 corner points. A polygon will be drawn automatically.',
       footer: SizedBox(
         width: double.infinity,
         child: FilledButton.icon(
@@ -270,7 +223,8 @@ class _PlotLocationPickerScreenState
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child:
+                      CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
               : const Icon(Icons.check_circle_outline),
           label: Padding(
@@ -280,7 +234,7 @@ class _PlotLocationPickerScreenState
                   ? 'Saving...'
                   : _points.length == 4
                       ? 'Confirm Plot Bounds'
-                      : 'Tap ${4 - _points.length} more point${4 - _points.length == 1 ? '' : 's'}',
+                      : 'Tap $remaining more point${remaining == 1 ? '' : 's'}',
             ),
           ),
         ),
@@ -293,7 +247,8 @@ class _PlotLocationPickerScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Search Location', style: Theme.of(context).textTheme.titleMedium),
+                Text('Search Location',
+                    style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 TextField(
                   key: const Key('plot_search_field'),
@@ -301,7 +256,8 @@ class _PlotLocationPickerScreenState
                   onChanged: _onSearchChanged,
                   decoration: InputDecoration(
                     hintText: 'Search village or landmark…'.tr,
-                    prefixIcon: const Icon(Icons.search, color: AppColors.heroForest, size: 20),
+                    prefixIcon: const Icon(Icons.search,
+                        color: AppColors.heroForest, size: 20),
                     suffixIcon: _isSearching
                         ? const Padding(
                             padding: EdgeInsets.all(12),
@@ -327,10 +283,12 @@ class _PlotLocationPickerScreenState
                 ),
                 if (_searchFeedback != null) ...[
                   const SizedBox(height: 8),
-                  Text(_searchFeedback!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          )),
+                  Text(
+                    _searchFeedback!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
                 ],
                 if (_suggestions.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -348,9 +306,11 @@ class _PlotLocationPickerScreenState
                       itemBuilder: (context, i) {
                         final s = _suggestions[i];
                         return ListTile(
-                          leading: const Icon(Icons.place_outlined, color: AppColors.heroForest),
+                          leading: const Icon(Icons.place_outlined,
+                              color: AppColors.heroForest),
                           title: Text(s.title),
-                          subtitle: s.subtitle != null ? Text(s.subtitle!) : null,
+                          subtitle:
+                              s.subtitle != null ? Text(s.subtitle!) : null,
                           trailing: const Icon(Icons.north_west),
                           onTap: () => _selectSuggestion(s),
                         );
@@ -363,7 +323,7 @@ class _PlotLocationPickerScreenState
           ),
           const SizedBox(height: 12),
 
-          // ── Points counter + reset ───────────────────────────────────────
+          // ── Points counter + actions ─────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -371,12 +331,22 @@ class _PlotLocationPickerScreenState
                 '${_points.length}/4 corners placed',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
-              if (_points.isNotEmpty)
-                TextButton.icon(
-                  onPressed: _resetPolygon,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Reset'),
-                ),
+              Row(
+                children: [
+                  if (_points.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: _undoLastPoint,
+                      icon: const Icon(Icons.undo, size: 18),
+                      label: const Text('Undo'),
+                    ),
+                  if (_points.length > 1)
+                    TextButton.icon(
+                      onPressed: _resetPolygon,
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Reset'),
+                    ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -388,30 +358,73 @@ class _PlotLocationPickerScreenState
               borderRadius: BorderRadius.circular(16),
               child: SizedBox(
                 height: 440,
-                child: kIsWeb
-                    ? _WebMapFallback(
-                        points: _points,
-                        onReset: _resetPolygon,
-                      )
-                    : GoogleMap(
-                        initialCameraPosition: CameraPosition(
-                          target: widget.initialTarget,
-                          zoom: widget.initialZoom,
-                        ),
-                        myLocationEnabled: widget.enableMyLocation,
-                        myLocationButtonEnabled: widget.enableMyLocation,
-                        markers: _markers,
-                        polygons: _polygons,
-                        onTap: _onMapTap,
-                        onMapCreated: (c) => _mapController = c,
-                        mapType: MapType.satellite,
-                        zoomControlsEnabled: true,
-                        compassEnabled: true,
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: widget.initialTarget,
+                    initialZoom: widget.initialZoom,
+                    maxZoom: 20,
+                    onTap: _onMapTap,
+                  ),
+                  children: [
+                    // Satellite imagery layer (ESRI — no key required)
+                    TileLayer(
+                      urlTemplate: _esriTileUrl,
+                      userAgentPackageName: 'com.ekutir.agent_app',
+                      maxZoom: 20,
+                      maxNativeZoom: 19,
+                    ),
+                    // Filled polygon (shows after 3 points)
+                    if (_points.length >= 3)
+                      PolygonLayer(
+                        polygons: [
+                          Polygon(
+                            points: [..._points, _points.first],
+                            color: AppColors.brandGreen.withValues(alpha: 0.25),
+                            borderColor: AppColors.brandGreen,
+                            borderStrokeWidth: 2.5,
+                          ),
+                        ],
                       ),
+                    // Polyline connecting points in order
+                    if (_points.length >= 2)
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: _points,
+                            color: AppColors.brandGreen,
+                            strokeWidth: 2,
+                          ),
+                        ],
+                      ),
+                    // Corner markers
+                    MarkerLayer(
+                      markers: _points.asMap().entries.map((e) {
+                        final color = _markerColor(e.key);
+                        return Marker(
+                          point: e.value,
+                          width: 36,
+                          height: 36,
+                          child: _CornerMarker(
+                            number: e.key + 1,
+                            color: color,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    // Attribution (required by ESRI ToS)
+                    const RichAttributionWidget(
+                      attributions: [
+                        TextSourceAttribution('Esri World Imagery'),
+                        TextSourceAttribution('© OpenStreetMap contributors',
+                            onTap: null),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-
           const SizedBox(height: 12),
 
           // ── Coordinates summary ─────────────────────────────────────────
@@ -428,12 +441,16 @@ class _PlotLocationPickerScreenState
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Row(
                             children: [
-                              _PointBadge(number: e.key + 1),
+                              _PointBadge(
+                                  number: e.key + 1,
+                                  color: _markerColor(e.key)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  '${e.value.latitude.toStringAsFixed(6)}, ${e.value.longitude.toStringAsFixed(6)}',
-                                  style: Theme.of(context).textTheme.bodySmall,
+                                  '${e.value.latitude.toStringAsFixed(6)}, '
+                                  '${e.value.longitude.toStringAsFixed(6)}',
+                                  style:
+                                      Theme.of(context).textTheme.bodySmall,
                                 ),
                               ),
                             ],
@@ -447,76 +464,65 @@ class _PlotLocationPickerScreenState
       ),
     );
   }
+
+  Color _markerColor(int index) {
+    const colors = [
+      AppColors.brandGreen,
+      Color(0xFFF9A825),
+      Color(0xFFEF6C00),
+      AppColors.danger,
+    ];
+    return colors[index % colors.length];
+  }
 }
 
-// ─── Web fallback ─────────────────────────────────────────────────────────────
-// google_maps_flutter doesn't work on Flutter Web. Show a clear message
-// with the captured coordinates instead.
+// ─── Corner Marker Widget ─────────────────────────────────────────────────────
 
-class _WebMapFallback extends StatelessWidget {
-  const _WebMapFallback({required this.points, required this.onReset});
-
-  final List<LatLng> points;
-  final VoidCallback onReset;
+class _CornerMarker extends StatelessWidget {
+  const _CornerMarker({required this.number, required this.color});
+  final int number;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFE8F5E9),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.map_outlined, size: 52, color: AppColors.brandGreen),
-              const SizedBox(height: 12),
-              Text(
-                'Map is only available on the Android / iOS app.',
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'On the native app, tap four corners of the farmer\'s plot to draw a boundary polygon.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              if (points.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text('${points.length} point(s) captured',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: AppColors.brandGreenDark)),
-              ],
-            ],
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        '$number',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Point Badge ──────────────────────────────────────────────────────────────
 
 class _PointBadge extends StatelessWidget {
-  const _PointBadge({required this.number});
+  const _PointBadge({required this.number, required this.color});
   final int number;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final colors = [
-      AppColors.brandGreen,
-      const Color(0xFFF9A825),
-      const Color(0xFFEF6C00),
-      AppColors.danger,
-    ];
     return CircleAvatar(
       radius: 12,
-      backgroundColor: colors[(number - 1) % colors.length],
+      backgroundColor: color,
       child: Text(
         '$number',
         style: const TextStyle(
@@ -525,6 +531,8 @@ class _PointBadge extends StatelessWidget {
     );
   }
 }
+
+// ─── Suggestion model ─────────────────────────────────────────────────────────
 
 class _Suggestion {
   const _Suggestion({

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../models/farmer.dart';
 import '../screens/plot_location_picker_screen.dart';
@@ -17,7 +17,6 @@ abstract class PlotLocationService {
 
 class PlotLocationException implements Exception {
   const PlotLocationException(this.message);
-
   final String message;
 
   @override
@@ -27,7 +26,7 @@ class PlotLocationException implements Exception {
 class GoogleMapsPlotLocationService implements PlotLocationService {
   const GoogleMapsPlotLocationService();
 
-  // Centre of India as the fallback.
+  // Centre of India as fallback starting point
   static const LatLng _defaultTarget = LatLng(20.5937, 78.9629);
 
   @override
@@ -49,7 +48,6 @@ class GoogleMapsPlotLocationService implements PlotLocationService {
         builder: (_) => PlotLocationPickerScreen(
           initialTarget: seed.target,
           initialZoom: seed.zoom,
-          enableMyLocation: seed.enableMyLocation,
         ),
       ),
     );
@@ -59,42 +57,33 @@ class GoogleMapsPlotLocationService implements PlotLocationService {
     required String locationHint,
     PlotLocation? currentLocation,
   }) async {
-    // If there's already a captured polygon, zoom to its centre.
+    // If there's already a captured polygon, zoom to its centre
     if (currentLocation != null && currentLocation.polygonPoints.isNotEmpty) {
       final c = currentLocation.center;
       return _PlotLocationSeed(
         target: LatLng(c.latitude, c.longitude),
         zoom: 17,
-        enableMyLocation: false,
       );
     }
 
-    // Try GPS.
+    // Try GPS first
     final gpsTarget = await _tryGps();
     if (gpsTarget != null) {
-      return _PlotLocationSeed(
-        target: gpsTarget,
-        zoom: 17,
-        enableMyLocation: true,
-      );
+      return _PlotLocationSeed(target: gpsTarget, zoom: 17);
     }
 
-    return const _PlotLocationSeed(
-      target: _defaultTarget,
-      zoom: 5.5,
-      enableMyLocation: false,
-    );
+    return const _PlotLocationSeed(target: _defaultTarget, zoom: 5.5);
   }
 
   Future<LatLng?> _tryGps() async {
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) { return null; }
+      if (!await Geolocator.isLocationServiceEnabled()) return null;
       var perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
       }
       if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) { return null; }
+          perm == LocationPermission.deniedForever) return null;
       final pos = await Geolocator.getCurrentPosition(
         locationSettings:
             const LocationSettings(accuracy: LocationAccuracy.high),
@@ -107,13 +96,7 @@ class GoogleMapsPlotLocationService implements PlotLocationService {
 }
 
 class _PlotLocationSeed {
-  const _PlotLocationSeed({
-    required this.target,
-    required this.zoom,
-    required this.enableMyLocation,
-  });
-
+  const _PlotLocationSeed({required this.target, required this.zoom});
   final LatLng target;
   final double zoom;
-  final bool enableMyLocation;
 }
