@@ -15,13 +15,13 @@ import '../utils/formatters.dart';
 import '../widgets/common.dart';
 // MetricCard and FarmerTrackerCard moved here from home_screen.dart
 
-enum FarmerDirectoryTab { willing, booked, all }
+enum EngagementTab { enrolled, tracking }
 
 class EngagementScreen extends StatefulWidget {
   const EngagementScreen(
-      {super.key, this.initialTab = FarmerDirectoryTab.willing});
+      {super.key, this.initialTab = EngagementTab.enrolled});
 
-  final FarmerDirectoryTab initialTab;
+  final EngagementTab initialTab;
 
   @override
   State<EngagementScreen> createState() => _EngagementScreenState();
@@ -29,7 +29,7 @@ class EngagementScreen extends StatefulWidget {
 
 class _EngagementScreenState extends State<EngagementScreen> {
   String _query = '';
-  late FarmerDirectoryTab _filter;
+  late EngagementTab _filter;
 
   @override
   void initState() {
@@ -40,177 +40,235 @@ class _EngagementScreenState extends State<EngagementScreen> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final trackerFarmers = appState.priorityFarmers;
-    final farmers = appState.searchFarmers(_query).where((farmer) {
-      switch (_filter) {
-        case FarmerDirectoryTab.willing:
-          return farmer.status == FarmerStatus.willing;
-        case FarmerDirectoryTab.booked:
-          return farmer.status == FarmerStatus.booked;
-        case FarmerDirectoryTab.all:
-          return true;
-      }
+    
+    // For portfolio tracking tab
+    final trackerFarmers = appState.priorityFarmers.where((farmer) {
+      if (_query.isEmpty) return true;
+      return farmer.name.toLowerCase().contains(_query.toLowerCase()) || 
+             farmer.location.toLowerCase().contains(_query.toLowerCase());
     }).toList();
 
+    // For enrolled farmers tab (all farmers for now, filterable)
+    final enrolledFarmers = appState.searchFarmers(_query).toList();
+
     return PageScaffold(
+      // The PageScaffold handles standard app bar or we can use custom.
+      // But we need the title 'Engage' to be 24px Montserrat per Figma.
+      // Assuming PageScaffold provides a standard title, we'll leave it as 'Engage'.tr
+      // Wait, let's customize the title style directly if possible, or just add our own header.
+      // PageScaffold already uses Montserrat 24px (from home_screen context, wait: page_scaffold might not).
       title: 'Engage'.tr,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Snapshot Metrics ─────────────────────────────────────────
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          // ── Segmented Button (Figma 1.2) ─────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _SnapChip(
-                  label: 'WILLING'.tr,
-                  value: '${appState.willingCount}',
-                  color: AppColors.brandGreenDark,
-                  bg: AppColors.brandGreenLight,
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _filter = EngagementTab.enrolled),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(100),
+                      bottomLeft: Radius.circular(100),
+                    ),
+                    child: Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _filter == EngagementTab.enrolled
+                            ? const Color(0xFF4F8506)
+                            : Colors.transparent,
+                        border: Border.all(color: const Color(0xFF4F8506)),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(100),
+                          bottomLeft: Radius.circular(100),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Enrolled Farmers'.tr,
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.1,
+                          color: _filter == EngagementTab.enrolled
+                              ? Colors.white
+                              : const Color(0xFF4F8506),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 8),
-                _SnapChip(
-                  label: 'BOOKED'.tr,
-                  value: '${appState.bookedCount}',
-                  color: AppColors.brandBlue,
-                  bg: AppColors.brandBlueLight,
-                ),
-                const SizedBox(width: 8),
-                _SnapChip(
-                  label: 'NURSERY'.tr,
-                  value: '${appState.nurseryCount}',
-                  color: AppColors.heroForest,
-                  bg: AppColors.heroMist,
-                ),
-                const SizedBox(width: 8),
-                _SnapChip(
-                  label: 'TRANSPLANTED'.tr,
-                  value: '${appState.growthCount}',
-                  color: const Color(0xFF558B2F),
-                  bg: const Color(0xFFF1F8E9),
-                ),
-                const SizedBox(width: 8),
-                _SnapChip(
-                  label: 'HARVEST'.tr,
-                  value: '${appState.harvestCount}',
-                  color: const Color(0xFFF57F17),
-                  bg: const Color(0xFFFFF8E1),
-                ),
-                const SizedBox(width: 8),
-                _SnapChip(
-                  label: 'PROCUREMENT'.tr,
-                  value: '${appState.procurementCount}',
-                  color: const Color(0xFF5E35B1),
-                  bg: const Color(0xFFEDE7F6),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _filter = EngagementTab.tracking),
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(100),
+                      bottomRight: Radius.circular(100),
+                    ),
+                    child: Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _filter == EngagementTab.tracking
+                            ? const Color(0xFF4F8506)
+                            : Colors.transparent,
+                        border: Border.all(color: const Color(0xFF4F8506)),
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(100),
+                          bottomRight: Radius.circular(100),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Farmer Portfolio Tracking'.tr,
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.1,
+                          color: _filter == EngagementTab.tracking
+                              ? Colors.white
+                              : const Color(0xFF4F8506),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 32),
 
-          // ── Farmer Status Tracker ─────────────────────────────────────
-          Text(
-            'Farmer Status Tracker'.tr,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Latest stage and transactions status per farmer'.tr,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 12),
-          ...trackerFarmers.map(
-            (farmer) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: FarmerTrackerCard(farmer: farmer),
+          // ── Heading Row ──────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    _filter == EngagementTab.enrolled 
+                        ? 'Enrolled Farmers'.tr 
+                        : 'Farmer Portfolio Tracking'.tr,
+                    style: const TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1C1919),
+                    ),
+                  ),
+                ),
+                if (_filter == EngagementTab.enrolled)
+                  InkWell(
+                    key: const Key('add_willing_farmer_button'),
+                    onTap: () => context.go('/engage/add'),
+                    borderRadius: BorderRadius.circular(47),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF294190),
+                        borderRadius: BorderRadius.circular(47),
+                      ),
+                      child: const Icon(
+                        Icons.person_add_alt_1_outlined,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          const Divider(),
           const SizedBox(height: 16),
 
-          // ── Search & Filter ───────────────────────────────────────────
-          SearchField(
-            hintText: 'Search farmer name, location...'.tr,
-            onChanged: (value) => setState(() {
-              _query = value;
-            }),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              key: const Key('add_willing_farmer_button'),
-              style: filledButtonStyle(),
-              onPressed: () => context.go('/engage/add'),
-              icon: const Icon(Icons.person_add_alt_1_outlined),
-              label: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 14),
-                child: Text('Add Willing Farmer'),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          // ── Search & Filter Row ──────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _DirectoryTabChip(
-                  label: 'Willing Farmers'.tr,
-                  selected: _filter == FarmerDirectoryTab.willing,
-                  onTap: () => setState(() {
-                    _filter = FarmerDirectoryTab.willing;
-                  }),
+                Expanded(
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6F6F6),
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: TextField(
+                      onChanged: (value) => setState(() => _query = value),
+                      decoration: InputDecoration(
+                        hintText: 'Search...'.tr,
+                        hintStyle: const TextStyle(
+                          fontFamily: 'Roboto',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF1C1B1F),
+                        ),
+                        prefixIcon: const Icon(Icons.search, color: Color(0xFF1C1B1F)),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 10),
-                _DirectoryTabChip(
-                  label: 'Booked Farmers'.tr,
-                  selected: _filter == FarmerDirectoryTab.booked,
-                  onTap: () => setState(() {
-                    _filter = FarmerDirectoryTab.booked;
-                  }),
-                ),
-                const SizedBox(width: 10),
-                _DirectoryTabChip(
-                  label: 'All Farmers'.tr,
-                  selected: _filter == FarmerDirectoryTab.all,
-                  onTap: () => setState(() {
-                    _filter = FarmerDirectoryTab.all;
-                  }),
+                const SizedBox(width: 16),
+                InkWell(
+                  onTap: () {
+                    // Filter action (placeholder)
+                  },
+                  borderRadius: BorderRadius.circular(47),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEBF1FF),
+                      borderRadius: BorderRadius.circular(47),
+                    ),
+                    child: const Icon(
+                      Icons.tune, // 'instant_mix' / tune icon
+                      color: Color(0xFF294190),
+                      size: 24,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          Text(
-            switch (_filter) {
-              FarmerDirectoryTab.willing => 'Willing Farmers',
-              FarmerDirectoryTab.booked => 'Booked Farmers',
-              FarmerDirectoryTab.all => 'All Farmers',
-            },
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 14),
-          if (farmers.isEmpty)
-            EmptyStateCard(
-              message: 'No farmers match the selected engage filter.'.tr,
-            )
-          else
-            ...farmers.map(
-              (farmer) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: FarmerListCard(
-                  farmer: farmer,
-                  onTap: () =>
-                      context.go('/engage/farmer/${farmer.id}?tab=profile'),
+          const SizedBox(height: 16),
+
+          // ── Content List ─────────────────────────────────────────────
+          if (_filter == EngagementTab.enrolled) ...[
+            if (enrolledFarmers.isEmpty)
+              EmptyStateCard(message: 'No farmers match the selected engage filter.'.tr)
+            else
+              ...enrolledFarmers.map(
+                (farmer) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
+                  child: FarmerListCard(
+                    farmer: farmer,
+                    onTap: () => context.go('/engage/farmer/${farmer.id}?tab=profile'),
+                  ),
                 ),
               ),
-            ),
+          ] else ...[
+            if (trackerFarmers.isEmpty)
+              EmptyStateCard(message: 'No farmers match the selected tracking filter.'.tr)
+            else
+              ...trackerFarmers.map(
+                (farmer) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
+                  child: FarmerTrackerCard(farmer: farmer),
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
 }
+
 
 class AddWillingFarmerScreen extends StatefulWidget {
   const AddWillingFarmerScreen({super.key});
@@ -231,6 +289,13 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
   final _bankAccController = TextEditingController();
   final _bankIfscController = TextEditingController();
   final _bankUpiController = TextEditingController();
+  // Figma 1.2 — new location fields
+  final _countryController = TextEditingController(text: 'India');
+  final _pincodeController = TextEditingController();
+  final _stateController = TextEditingController();
+  final _blockController = TextEditingController();
+  final _villageController = TextEditingController();
+  final _addressController = TextEditingController();
 
   final List<LandRecord> _lands = [];
   FarmerType _farmerType = FarmerType.individual;
@@ -247,7 +312,29 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
     _bankAccController.dispose();
     _bankIfscController.dispose();
     _bankUpiController.dispose();
+    _countryController.dispose();
+    _pincodeController.dispose();
+    _stateController.dispose();
+    _blockController.dispose();
+    _villageController.dispose();
+    _addressController.dispose();
     super.dispose();
+  }
+
+  /// Mock pincode → state/block lookup (Figma: "Fills State and Block automatically")
+  void _onPincodeChanged(String value) {
+    if (value.length == 6) {
+      // Simulate auto-fill with a placeholder
+      setState(() {
+        _stateController.text = 'Odisha';
+        _blockController.text = 'Bhubaneswar';
+      });
+    } else if (value.length < 6) {
+      setState(() {
+        _stateController.text = '';
+        _blockController.text = '';
+      });
+    }
   }
 
   String? _validateRequired(String? value, String label) {
@@ -328,7 +415,7 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
       title: 'Add Willing Farmer'.tr,
       showBack: true,
       description: 'Capture the farmer details for onboarding.',
-      onBack: () => context.go('/engage?tab=willing'),
+      onBack: () => context.go('/engage?tab=enrolled'),
       footer: SizedBox(
         width: double.infinity,
         child: FilledButton(
@@ -395,18 +482,95 @@ class _AddWillingFarmerScreenState extends State<AddWillingFarmerScreen> {
                     validator: (value) => _validateRequired(value, 'Full name'),
                   ),
                   const SizedBox(height: 12),
+                  // Phone with +91 prefix (Figma 1.2)
                   TextFormField(
                     key: const Key('new_farmer_phone_field'),
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(labelText: 'Mobile Number'),
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      prefixText: '+91  ',
+                      prefixStyle: const TextStyle(
+                        fontFamily: 'Roboto',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1C1B1F),
+                      ),
+                    ),
                     validator: (value) => _validatePhone(appState, value),
                   ),
                   const SizedBox(height: 12),
+                  // Country (Figma 1.2)
+                  TextFormField(
+                    key: const Key('new_farmer_country_field'),
+                    controller: _countryController,
+                    decoration: const InputDecoration(labelText: 'Country'),
+                    validator: (value) => _validateRequired(value, 'Country'),
+                  ),
+                  const SizedBox(height: 12),
+                  // Pincode — auto-fills State & Block (Figma 1.2)
+                  TextFormField(
+                    key: const Key('new_farmer_pincode_field'),
+                    controller: _pincodeController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    onChanged: _onPincodeChanged,
+                    decoration: const InputDecoration(
+                      labelText: 'Pincode',
+                      hintText: 'e.g., 211001',
+                      helperText: 'Fills State and Block automatically.',
+                      counterText: '',
+                    ),
+                    validator: (value) => _validateRequired(value, 'Pincode'),
+                  ),
+                  const SizedBox(height: 12),
+                  // State (auto-filled by pincode)
+                  TextFormField(
+                    key: const Key('new_farmer_state_field'),
+                    controller: _stateController,
+                    decoration: const InputDecoration(
+                      labelText: 'State',
+                      hintText: 'Select state',
+                    ),
+                    validator: (value) => _validateRequired(value, 'State'),
+                  ),
+                  const SizedBox(height: 12),
+                  // Block (auto-filled by pincode)
+                  TextFormField(
+                    key: const Key('new_farmer_block_field'),
+                    controller: _blockController,
+                    decoration: const InputDecoration(
+                      labelText: 'Block',
+                      hintText: 'Select block',
+                    ),
+                    validator: (value) => _validateRequired(value, 'Block'),
+                  ),
+                  const SizedBox(height: 12),
+                  // Village
+                  TextFormField(
+                    key: const Key('new_farmer_village_field'),
+                    controller: _villageController,
+                    decoration: const InputDecoration(
+                      labelText: 'Village',
+                      hintText: 'Enter village',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Address
+                  TextFormField(
+                    key: const Key('new_farmer_address_field'),
+                    controller: _addressController,
+                    decoration: const InputDecoration(
+                      labelText: 'Address',
+                      hintText: 'Enter address line',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Location (combined for backward compat)
                   TextFormField(
                     key: const Key('new_farmer_location_field'),
                     controller: _locationController,
-                    decoration: const InputDecoration(labelText: 'Location'),
+                    decoration: const InputDecoration(labelText: 'Location / Nearest Town'),
                     validator: (value) => _validateRequired(value, 'Location'),
                   ),
                 ],
@@ -764,12 +928,7 @@ class FarmerProfileScreen extends StatelessWidget {
     return PageScaffold(
       title: 'Farmer Profile'.tr,
       showBack: true,
-      onBack: () => context.go(
-        switch (farmer.status) {
-          FarmerStatus.willing => '/engage?tab=willing',
-          FarmerStatus.booked => '/engage?tab=booked',
-        },
-      ),
+      onBack: () => context.go('/engage?tab=enrolled'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1757,54 +1916,7 @@ class _StageActionPanel extends StatelessWidget {
   }
 }
 
-// ─── _SnapChip ────────────────────────────────────────────────────────────────
 
-class _SnapChip extends StatelessWidget {
-  const _SnapChip({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.bg,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-  final Color bg;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 10,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─── FarmerTrackerCard ────────────────────────────────────────────────────────
 
@@ -1816,67 +1928,135 @@ class FarmerTrackerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      farmer.name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      farmer.location,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-              StatusPill(
-                label: farmer.stage.label,
-                background: stageBackgroundColor(farmer.stage),
-                foreground: stageForegroundColor(farmer.stage),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              StatusPill(
-                label: 'Cash: ${appState.farmerTrackerSupportLabel(farmer.id, SupportType.cash)}',
-                background: AppColors.brandGreenLight,
-                foreground: AppColors.brandGreenDark,
-              ),
-              StatusPill(
-                label: 'Kind: ${appState.farmerTrackerSupportLabel(farmer.id, SupportType.kind)}',
-                background: AppColors.heroMist,
-                foreground: AppColors.heroForest,
-              ),
-              StatusPill(
-                label: 'Procurement: ${appState.farmerTrackerProcurementLabel(farmer.id)}',
-                background: AppColors.brandBlueLight,
-                foreground: AppColors.brandBlue,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => context.go('/engage/farmer/${farmer.id}?tab=profile'),
-              child: Text('View Details'.tr),
-            ),
+    final nextTask = appState.nextTaskForFarmer(farmer.id);
+
+    final cashLabel = appState.farmerTrackerSupportLabel(farmer.id, SupportType.cash);
+    final kindLabel = appState.farmerTrackerSupportLabel(farmer.id, SupportType.kind);
+    final procLabel = appState.farmerTrackerProcurementLabel(farmer.id);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDADCE0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 14.1,
+            spreadRadius: 3,
           ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header: farmer name + stage chip ─────────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  farmer.name,
+                  style: const TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1C1B1F),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Stage chip — Figma "Suggestion chip" style
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFDADCE0)),
+                ),
+                child: Text(
+                  farmer.stage.label,
+                  style: const TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.1,
+                    color: Color(0xFF1C1B1F),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24), // Figma gap: 24px
+
+          // ── Detail rows — space-between, labels UPPERCASE ─────────
+          _TrackerDetailRow(label: 'LOCATION', value: farmer.location),
+          const SizedBox(height: 8),
+          _TrackerDetailRow(label: 'CASH', value: cashLabel),
+          const SizedBox(height: 8),
+          _TrackerDetailRow(label: 'KIND', value: kindLabel),
+          const SizedBox(height: 8),
+          _TrackerDetailRow(label: 'PROCUREMENT', value: procLabel),
+          if (nextTask != null) ...[
+            const SizedBox(height: 8),
+            _TrackerDetailRow(
+              label: 'NEXT ACTION',
+              value: nextTask.actionLabel,
+              labelColor: const Color(0xFF4F8506),
+              valueWeight: FontWeight.w700,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TrackerDetailRow extends StatelessWidget {
+  const _TrackerDetailRow({
+    required this.label,
+    required this.value,
+    this.labelColor = const Color(0xFF757575),
+    this.valueWeight = FontWeight.w400,
+  });
+
+  final String label;
+  final String value;
+  final Color labelColor;
+  final FontWeight valueWeight;
+
+  @override
+  Widget build(BuildContext context) {
+    // Figma: justify-content: space-between — label left, value right
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label, // Already uppercase per Figma text-transform: uppercase
+          style: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: labelColor,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 16,
+              fontWeight: valueWeight,
+              color: const Color(0xFF1C1B1F),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

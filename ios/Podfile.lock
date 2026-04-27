@@ -3,20 +3,6 @@ PODS:
   - geolocator_apple (1.2.0):
     - Flutter
     - FlutterMacOS
-  - mappls_gl (2.0.1):
-    - Flutter
-    - MapplsAnnotationExtensionAuth2/Base (= 2.0.0)
-    - MapplsAPICoreAuth2 (~> 2.1.2)
-    - MapplsAPIKitAuth2/Base (= 3.0.4)
-    - MapplsGeoanalyticsAuth2/Base (= 2.0.0)
-    - MapplsLMSAuth2/Base (= 2.0.1)
-    - MapplsMapAuth2/Base (= 6.1.4)
-  - MapplsAnnotationExtensionAuth2/Base (2.0.0)
-  - MapplsAPICoreAuth2 (2.1.2)
-  - MapplsAPIKitAuth2/Base (3.0.4)
-  - MapplsGeoanalyticsAuth2/Base (2.0.0)
-  - MapplsLMSAuth2/Base (2.0.1)
-  - MapplsMapAuth2/Base (6.1.4)
   - package_info_plus (0.4.5):
     - Flutter
   - printing (1.0.0):
@@ -32,29 +18,17 @@ PODS:
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
-  - mappls_gl (from `.symlinks/plugins/mappls_gl/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - printing (from `.symlinks/plugins/printing/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
-SPEC REPOS:
-  trunk:
-    - MapplsAnnotationExtensionAuth2
-    - MapplsAPICoreAuth2
-    - MapplsAPIKitAuth2
-    - MapplsGeoanalyticsAuth2
-    - MapplsLMSAuth2
-    - MapplsMapAuth2
-
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
   geolocator_apple:
     :path: ".symlinks/plugins/geolocator_apple/darwin"
-  mappls_gl:
-    :path: ".symlinks/plugins/mappls_gl/ios"
   package_info_plus:
     :path: ".symlinks/plugins/package_info_plus/ios"
   printing:
@@ -69,13 +43,6 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   geolocator_apple: ab36aa0e8b7d7a2d7639b3b4e48308394e8cef5e
-  mappls_gl: 4666422b2f4b3a19dff99a7730bc11ef44fce44a
-  MapplsAnnotationExtensionAuth2: a1369e8ab04f6bd3a7ece1da90e84266d16b67d4
-  MapplsAPICoreAuth2: 62af21bce05a8498d27218988dc2736535f8a128
-  MapplsAPIKitAuth2: 664d327aa287d0b138ba67bcf2a1ffeced3eecee
-  MapplsGeoanalyticsAuth2: 6635e0a6a3cce7dfed48b139d7c10105ac61a5d4
-  MapplsLMSAuth2: 95d991d6d154a6424705b9cf8f5b4155a0d28a04
-  MapplsMapAuth2: ea5025326a2165482ae421a4f78d22eb3935d35b
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   printing: 54ff03f28fe9ba3aa93358afb80a8595a071dd07
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a

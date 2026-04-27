@@ -162,13 +162,16 @@ GoRouter _createRouter(AppState appState) {
             builder: (context, state) => const ProfileScreen(),
           ),
           GoRoute(
+            path: '/profile/account',
+            builder: (context, state) => const UserAccountScreen(),
+          ),
+          GoRoute(
             path: '/engage',
             builder: (context, state) {
               final tabParam = state.uri.queryParameters['tab'];
               final tab = switch (tabParam) {
-                'booked' => FarmerDirectoryTab.booked,
-                'all' => FarmerDirectoryTab.all,
-                _ => FarmerDirectoryTab.willing,
+                'tracking' => EngagementTab.tracking,
+                _ => EngagementTab.enrolled,
               };
               return EngagementScreen(initialTab: tab);
             },
@@ -440,10 +443,10 @@ class AppShell extends StatelessWidget {
     context.watch<AppState>();
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentTab.index,
-        onDestinationSelected: (index) {
-          switch (AppTab.values[index]) {
+      bottomNavigationBar: _FigmaNavBar(
+        currentTab: currentTab,
+        onTabSelected: (tab) {
+          switch (tab) {
             case AppTab.home:
               context.go('/home');
               break;
@@ -458,28 +461,131 @@ class AppShell extends StatelessWidget {
               break;
           }
         },
-        destinations: [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home'.tr,
+      ),
+    );
+  }
+}
+
+// ─── Custom Figma "New Navbar" ────────────────────────────────────────────────
+
+class _FigmaNavBar extends StatelessWidget {
+  const _FigmaNavBar({
+    required this.currentTab,
+    required this.onTabSelected,
+  });
+
+  final AppTab currentTab;
+  final ValueChanged<AppTab> onTabSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 76 + MediaQuery.of(context).padding.bottom,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFEFEFE),
+        border: Border(top: BorderSide(color: Color(0xFFDADCE0), width: 0.5)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _NavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home,
+                label: 'Home'.tr,
+                selected: currentTab == AppTab.home,
+                onTap: () => onTabSelected(AppTab.home),
+              ),
+              _NavItem(
+                icon: Icons.groups_2_outlined,
+                activeIcon: Icons.groups_2,
+                label: 'Engage'.tr,
+                selected: currentTab == AppTab.engage,
+                onTap: () => onTabSelected(AppTab.engage),
+              ),
+              _NavItem(
+                icon: Icons.circle_notifications_outlined,
+                activeIcon: Icons.circle_notifications,
+                label: 'Updates'.tr,
+                selected: currentTab == AppTab.updates,
+                onTap: () => onTabSelected(AppTab.updates),
+              ),
+              _NavItem(
+                icon: Icons.person_outline,
+                activeIcon: Icons.person,
+                label: 'Profile'.tr,
+                selected: currentTab == AppTab.profile,
+                onTap: () => onTabSelected(AppTab.profile),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.groups_2_outlined),
-            selectedIcon: Icon(Icons.groups_2),
-            label: 'Engage'.tr,
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.circle_notifications_outlined),
-            selectedIcon: Icon(Icons.circle_notifications),
-            label: 'Updates'.tr,
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile'.tr,
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const selectedColor = Color(0xFF4F8506);
+    const unselectedColor = Color(0xFF1C1B1F);
+    const activeBg = Color(0xFFF8FFF0);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: 69,
+        height: 64,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Icon container — 56×32 with radius 16
+            Container(
+              width: 56,
+              height: 32,
+              decoration: BoxDecoration(
+                color: selected ? activeBg : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                selected ? activeIcon : icon,
+                size: 24,
+                color: selected ? selectedColor : unselectedColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Roboto',
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+                color: selected ? selectedColor : unselectedColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

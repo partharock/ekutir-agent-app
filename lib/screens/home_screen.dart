@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import '../widgets/agent_profile_drawer.dart';
 import '../widgets/common.dart';
 import '../widgets/device_chrome.dart';
+import 'engagement_screens.dart' show FarmerTrackerCard;
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -17,6 +18,15 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final tasks = appState.homeTasks.take(3).toList();
+    final trackerFarmers = appState.priorityFarmers.take(2).toList();
+
+    // Target progress values
+    final farmerAchieved = appState.farmers.length;
+    final farmerTarget = appState.targetFarmers;
+    final farmerProgress = (farmerAchieved / farmerTarget).clamp(0.0, 1.0);
+    final landAchieved = appState.totalLandAcres;
+    final landTarget = appState.targetLandAcres;
+    final landProgress = (landAchieved / landTarget).clamp(0.0, 1.0);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -62,20 +72,112 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 52),
                     // Header — full width (no horizontal padding here)
                     _HomeHeader(agentName: appState.agentName),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
-                    // MISA AI Card
+                    // ── Target Tracker ────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Target Tracker'.tr,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF1C1B1F),
+                                ),
+                          ),
+                          const SizedBox(height: 12),
+                          _HomeTargetCard(
+                            icon: Icons.person_outline,
+                            label: 'Farmer Target'.tr,
+                            achieved: farmerAchieved,
+                            target: farmerTarget,
+                            progress: farmerProgress,
+                            unit: '',
+                          ),
+                          const SizedBox(height: 10),
+                          _HomeTargetCard(
+                            icon: Icons.map_outlined,
+                            label: 'Land Target'.tr,
+                            achieved: landAchieved.toInt(),
+                            target: landTarget.toInt(),
+                            progress: landProgress,
+                            unit: 'ac',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    // ── Farmer-wise Tracking ─────────────────────────
+                    if (trackerFarmers.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Farmer-wise Tracking'.tr,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF1C1B1F),
+                              ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Latest stage and transactions status per farmer'.tr,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontSize: 14,
+                                color: const Color(0xFF757575),
+                              ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...trackerFarmers.map(
+                        (farmer) => Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                          child: FarmerTrackerCard(farmer: farmer),
+                        ),
+                      ),
+                      // View all farmers button
+                      Align(
+                        alignment: Alignment.center,
+                        child: TextButton(
+                          onPressed: () => context.go('/engage'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF294190),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                          ),
+                          child: Text(
+                            'View all farmers'.tr,
+                            style: const TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF294190),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
+                    // ── MISA AI Card ──────────────────────────────────
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: _MisaAiCard(),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 30),
 
-                    // Today's Activities section
+                    // ── Today's Priorities ────────────────────────────
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        "Today's Activities",
+                        "Today's Priorities".tr,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
@@ -83,7 +185,7 @@ class HomeScreen extends StatelessWidget {
                             ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     if (tasks.isEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -95,7 +197,7 @@ class HomeScreen extends StatelessWidget {
                     else
                       ...tasks.map(
                         (task) => Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
                           child: TaskCard(task: task),
                         ),
                       ),
@@ -111,6 +213,100 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── Home Target Tracker Card ─────────────────────────────────────────────────
+
+class _HomeTargetCard extends StatelessWidget {
+  const _HomeTargetCard({
+    required this.icon,
+    required this.label,
+    required this.achieved,
+    required this.target,
+    required this.progress,
+    required this.unit,
+  });
+
+  final IconData icon;
+  final String label;
+  final int achieved;
+  final int target;
+  final double progress;
+  final String unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final u = unit.isNotEmpty ? ' $unit' : '';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDADCE0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 24, color: const Color(0xFF1C1B1F)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1C1B1F),
+                  ),
+                ),
+              ),
+              Text(
+                '$achieved$u / $target$u',
+                style: const TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 14,
+                  color: Color(0xFF1C1B1F),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Progress bar — #EAEAEA bg, #4F8506 fill, radius 33, height 12
+          Stack(
+            children: [
+              Container(
+                height: 12,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAEAEA),
+                  borderRadius: BorderRadius.circular(33),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: progress.clamp(0.0, 1.0),
+                child: Container(
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4F8506),
+                    borderRadius: BorderRadius.circular(33),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -302,25 +498,28 @@ class TaskCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Activity Name
+          // Activity Name — Roboto 600 18px (Figma spec)
           Text(
             task.title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1C1B1F),
-                ),
+            style: const TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1C1B1F),
+            ),
           ),
           const SizedBox(height: 8),
-          // Description
+          // Description — Roboto 400 14px
           Text(
             task.subtitle,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontSize: 14,
-                  color: const Color(0xFF1C1B1F),
-                ),
+            style: const TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF1C1B1F),
+            ),
           ),
-          // Take Action button right-aligned
+          // Take Action button right-aligned — Roboto 500 16px #4F8506
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
@@ -332,6 +531,7 @@ class TaskCard extends StatelessWidget {
               child: Text(
                 task.actionLabel,
                 style: const TextStyle(
+                  fontFamily: 'Roboto',
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
@@ -343,4 +543,3 @@ class TaskCard extends StatelessWidget {
     );
   }
 }
-
